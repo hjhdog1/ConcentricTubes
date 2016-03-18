@@ -3,7 +3,7 @@
 
 #define CTR_EPSILON 0.0001
 
-MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints) : maxIter(100)
+MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints) : maxIter(1000)
 {
 	this->robot = _robot;
 	Initialization(numOfGridPoints);
@@ -18,7 +18,7 @@ bool MechanicsBasedKinematics::ComputeKinematics(double* rotation, double* trans
 {
 	if(!this->robot->UpdateConfiguration(rotation, translation))
 		return false;
-
+	
 	if(!this->solveBVP(this->BVPSolutionGrid))
 		return false;
 
@@ -112,13 +112,13 @@ bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 		
 		if(this->hasBVPConverged(solution, errorBC))
 			return true;
-
+		
 		this->computeBCJacobian(solution);
 		this->updateBC(errorBC);
 		
 	}
 
-
+	std::cout << "BVP Failed!" <<std::endl;
 	return false;
 }
 

@@ -1,4 +1,5 @@
 ﻿#include "CTR.h"
+#include <iostream>
 
 #define MAX_TRANSLATION 100000000000000000
 
@@ -32,7 +33,10 @@ bool CTR::CheckJointLimits(const double* translation) const
 {
 	for( int i = 0; i < this->numTubes; ++i)
 		if(translation[i] < this->lowerTubeTranslationLimit[i] || translation[i] > this->upperTubeTranslationLimit[i])
+		{
+			std::cout << "Out of joint limit!" << std::endl;
 			return false;
+		}
 
 	return true;
 }
@@ -68,11 +72,12 @@ bool CTR::TubeExists (double s, int tubeID) const
 
 bool CTR::UpdateConfiguration (const double* rotation, const double* translation)
 {
-	if(!this->CheckJointLimits(translation))
-		return false;
-
 	memcpy(this->tubeRotation, rotation, sizeof(double)*this->numTubes);
 	memcpy(this->tubeTranslation, translation, sizeof(double)*this->numTubes);
+
+	this->ComputeJointLimits();
+	if(!this->CheckJointLimits(translation))
+		return false;
 
 	this->UpdateLength();
 

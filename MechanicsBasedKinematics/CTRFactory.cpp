@@ -6,7 +6,7 @@ CTRFactory::CTRFactory()
 
 CTR* const CTRFactory::buildCTR (std::string robotXML)
 {
-	double nu = 5;
+	double nu = 0.3;	// Poisson's ratio
 
     // Tube 1
 	double precurv[3] = {0.0, 1.0/264.0, 0.0};
