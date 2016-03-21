@@ -120,10 +120,10 @@ std::vector<Tube>& CTR::GetTubes ()
     return this->tubes;
 }
 
-void CTR::GetExistingTubes(const double s, std::vector<int>& tubeIDs) const
+void CTR::GetExistingTubes(const double s, std::vector<bool>& tubeIDs) const
 {
-	tubeIDs.clear();
+	//tubeIDs.clear();
 	for(int i = 0; i < this->numTubes; ++i)
 		if(this->TubeExists (s, i))
-			tubeIDs.push_back(i);
+			tubeIDs[i] = true;
 }

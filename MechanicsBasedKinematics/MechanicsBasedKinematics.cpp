@@ -144,12 +144,20 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 	//std::cout << "boundaryConditions = " << boundaryConditions.transpose() << std::endl;
 
 	
+	::std::vector<double> stiffness(numTubes);
+	::std::vector<double> poissonsRatio(numTubes);
+	for (int i = 0; i < numTubes; ++i)
+	{
+		stiffness[i] = this->robot->GetStiffness(i);
+		poissonsRatio[i] = this->robot->GetPoissonsRatio(i);
+	}
+
 	for(int i = numGridPoints-1; i > 0; --i)
 	{
 		double s = this->arcLengthGrid[i];
 		
 		// uz, theta
-		vector<int> existingTubeIDs;
+		vector<bool> existingTubeIDs(numTubes);
 		this->robot->GetExistingTubes(s, existingTubeIDs);
 
 		double momentSum = 0;
@@ -164,24 +172,26 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 		// compute uxy
 		double sumkxy = 0, sumkz = 0;
 		Vec3 sumRKu(0);
-		vector<SO3> Rz(existingTubeIDs.size());
-		vector<Vec3> u_hat(existingTubeIDs.size());
+		vector<SO3> Rz(numTubes);
+		vector<Vec3> u_hat(numTubes);
 
-		std::vector<double> nu(existingTubeIDs.size());
-		for (int j = 0; j < existingTubeIDs.size(); ++j)
+		std::vector<double> nu(numTubes);
+		for (int j = 0; j < numTubes; ++j)
 		{
-			//double precurvature[3];
+			if (!existingTubeIDs[j])
+				continue;
+
 			const double* precurvature;
-			this->robot->ComputePrecurvature(s, existingTubeIDs[j], &precurvature);
+			this->robot->ComputePrecurvature(s, j, &precurvature);
 			u_hat[j] = Vec3(precurvature[0], precurvature[1], precurvature[2]);
 
-			double kxy = this->robot->GetStiffness(existingTubeIDs[j]);
-			nu[j] = this->robot->GetPoissonsRatio(existingTubeIDs[j]);
+			double kxy = stiffness[j];
+			nu[j] = poissonsRatio[j];
 			double kz = kxy / (1 + nu[j]);
 			sumkxy += kxy;
 			sumkz += kz;
 
-			double theta = solution(existingTubeIDs[j], i);
+			double theta = solution(j, i);
 			Rz[j] = Exp(0, 0, theta);
 			sumRKu += Rz[j] * Vec3(kxy * u_hat[j][0], kxy * u_hat[j][1], kz * u_hat[j][2]);
 		}
@@ -196,13 +206,16 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 		
 		
 		// integrate uz
-		for(int j = 0; j < existingTubeIDs.size(); j++)
+		for(int j = 0; j < numTubes; j++)
 		{
+			if (!existingTubeIDs[j])
+				continue;
+
 			Vec3 u_curTube = Inv(Rz[j]) * u;
 
 			double duzds = (1+nu[j]) * (u_curTube[0]*u_hat[j][1] - u_curTube[1]*u_hat[j][0]);
 
-			solution(numTubes + existingTubeIDs[j], i-1) = solution(numTubes + existingTubeIDs[j], i) - duzds * ds;
+			solution(numTubes + j, i-1) = solution(numTubes + j, i) - duzds * ds;
 		}
 
 		// TODO: integrate m (moment) and n (force)

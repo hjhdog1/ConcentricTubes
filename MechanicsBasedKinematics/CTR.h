@@ -43,7 +43,7 @@ public:
 		double* GetTranslation() const {return this->tubeTranslation;};
         std::vector<Tube>& GetTubes ();
 
-		void GetExistingTubes(const double s, std::vector<int>& tubeIDs) const;
+		void GetExistingTubes(const double s, std::vector<bool>& tubeIDs) const;
 
 
 
