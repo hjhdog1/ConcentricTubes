@@ -31,9 +31,9 @@ public:
         
     public:
         bool UpdateConfiguration (const double* rotation, const double* translation);
-        bool ComputePrecurvature (double s, int tubeID, double* precurvature);
-		double GetStiffness(int tubeID) {return tubes[tubeID].GetValue("kxy");};
-		double GetPoissonsRatio(int tubeID) {return tubes[tubeID].GetValue("nu");};
+        bool ComputePrecurvature (double s, int tubeID, const double* precurvature[3]);
+		double GetStiffness(int tubeID) {return tubes[tubeID].GetBendingStiffness();};
+		double GetPoissonsRatio(int tubeID) {return tubes[tubeID].GetPoissonsRatio();};
 		double GetLength() const {return length;};
 		int GetNumOfTubes() const {return numTubes;};
 		//void GetConfiguration(const double* rot, const double* trans) const {rot = this->tubeRotation; *trans = this->tubeTranslation; };

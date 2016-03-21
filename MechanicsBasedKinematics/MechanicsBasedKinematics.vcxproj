@@ -81,7 +81,6 @@
     <ClInclude Include="MechanicsBasedKinematics.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="Parameter.h" />
     <ClInclude Include="Part.h" />
     <ClInclude Include="Section.h" />
     <ClInclude Include="Tube.h" />

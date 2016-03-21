@@ -44,9 +44,6 @@
     <ClInclude Include="MechanicsBasedKinematics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Parameter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Part.h">
       <Filter>Header Files</Filter>
     </ClInclude>

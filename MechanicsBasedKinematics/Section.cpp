@@ -1,9 +1,17 @@
 ﻿#include "Section.h"
 
-Section::Section(double sectionLength, double precurvature[3])
+Section::Section(double _sectionLength, double _precurvature[3])
+	: sectionLength(_sectionLength)
 {
-	this->SetParameter("Length", Parameter(sectionLength));
-	this->SetParameter("ux", Parameter(precurvature[0]));
-	this->SetParameter("uy", Parameter(precurvature[1]));
-	this->SetParameter("uz", Parameter(precurvature[2]));
+	memcpy(this->precurvature, _precurvature, sizeof(double)*3);
+}
+
+double Section::GetSectionLength() const
+{
+	return sectionLength;
+}
+
+const double* Section::GetPrecurvature() const
+{
+	return precurvature;
 }

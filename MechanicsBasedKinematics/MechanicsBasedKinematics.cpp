@@ -3,7 +3,8 @@
 
 #define CTR_EPSILON 0.0001
 
-MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints) : maxIter(1000)
+MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints)
+	: maxIter(500), stepSize(1.0)
 {
 	this->robot = _robot;
 	Initialization(numOfGridPoints);
@@ -105,6 +106,9 @@ bool MechanicsBasedKinematics::GetControlJacobian(double s, Eigen::MatrixXd& con
 
 bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 {
+	this->stepSize = 1.0;
+	int halfMaxIter = this->maxIter/2;
+
 	Eigen::VectorXd errorBC;
 	for(int i = 0; i < this->maxIter; ++i)
 	{
@@ -115,6 +119,9 @@ bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 		
 		this->computeBCJacobian(solution);
 		this->updateBC(errorBC);
+
+		if(i == halfMaxIter)
+			this->stepSize *= 0.5;
 		
 	}
 
@@ -163,8 +170,9 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 		std::vector<double> nu(existingTubeIDs.size());
 		for (int j = 0; j < existingTubeIDs.size(); ++j)
 		{
-			double precurvature[3];
-			this->robot->ComputePrecurvature(s, existingTubeIDs[j], precurvature);
+			//double precurvature[3];
+			const double* precurvature;
+			this->robot->ComputePrecurvature(s, existingTubeIDs[j], &precurvature);
 			u_hat[j] = Vec3(precurvature[0], precurvature[1], precurvature[2]);
 
 			double kxy = this->robot->GetStiffness(existingTubeIDs[j]);
@@ -210,8 +218,9 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 	std::vector<double> nu(numTubes);
 	for (int j = 0; j < numTubes; ++j)
 	{
-		double precurvature[3];
-		this->robot->ComputePrecurvature(this->arcLengthGrid[0], j, precurvature);
+		//double precurvature[3];
+		const double* precurvature;
+		this->robot->ComputePrecurvature(this->arcLengthGrid[0], j, &precurvature);
 		u_hat[j] = Vec3(precurvature[0], precurvature[1], precurvature[2]);
 
 		double kxy = this->robot->GetStiffness(j);
@@ -242,7 +251,7 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 
 void MechanicsBasedKinematics::updateBC(Eigen::VectorXd& errorBC)
 {
-	boundaryConditionTip += this->jacobianBC.inverse() * errorBC;
+	boundaryConditionTip += this->stepSize * this->jacobianBC.inverse() * errorBC;
 	//std::cout << "BC at Tip = [" << boundaryConditionTip.transpose() << "]" << std::endl;
 }
 

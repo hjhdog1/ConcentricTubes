@@ -14,18 +14,18 @@ CTR::~CTR()
 
 void CTR::UpdateLength ()
 {
-	length = (--tubes.end())->GetValue("Length") - (tubeTranslation[0] - tubeTranslation[numTubes-1]);
+	length = (--tubes.end())->GetTubeLength() - (tubeTranslation[0] - tubeTranslation[numTubes-1]);
 }
 
 void CTR::ComputeJointLimits ()
 {
-	double accCollarLength = this->tubes[0].GetValue("CollarLength");
+	double accCollarLength = this->tubes[0].GetCollarLength();
 	for(int i = 1; i < this->numTubes; ++i)
 	{	
 		this->upperTubeTranslationLimit[i] = -accCollarLength + this->tubeTranslation[0];
-		this->lowerTubeTranslationLimit[i] = this->tubes[0].GetValue("Length") - this->tubes[i].GetValue("Length") + this->tubeTranslation[0];
+		this->lowerTubeTranslationLimit[i] = this->tubes[0].GetTubeLength() - this->tubes[i].GetTubeLength() + this->tubeTranslation[0];
 
-		accCollarLength += this->tubes[i].GetValue("CollarLength");
+		accCollarLength += this->tubes[i].GetCollarLength();
 	}
 }
 
@@ -64,7 +64,7 @@ bool CTR::TubeExists (double s, int tubeID) const
 	if( s < 0)
 		return false;
 
-	if( s > tubes[tubeID].GetValue("Length") - (tubeTranslation[0] - tubeTranslation[tubeID]) )
+	if( s > tubes[tubeID].GetTubeLength() - (tubeTranslation[0] - tubeTranslation[tubeID]) )
 		return false;
 
 	return true;
@@ -90,7 +90,7 @@ void CTR::AddTube (Tube tube)
 	this->tubes.push_back(tube);
 }
 
-bool CTR::ComputePrecurvature (double s, int tubeID, double* precurvature)
+bool CTR::ComputePrecurvature (double s, int tubeID, const double* precurvature[3])
 {
 	if(!this->TubeExists(s, tubeID))
 		return false;
@@ -99,14 +99,15 @@ bool CTR::ComputePrecurvature (double s, int tubeID, double* precurvature)
 	 
 	double accSectionLength = 0;
 	double relativeTrans = (this->tubeTranslation[0] - this->tubeTranslation[tubeID]);
-	for(std::vector<Section>::iterator it = sections.begin(); it != sections.end(); ++it)
+	for(std::vector<Section>::const_iterator it = sections.begin(); it != sections.end(); ++it)
 	{
-		accSectionLength += it->GetValue("Length");
+		accSectionLength += it->GetSectionLength();
 		if(s + relativeTrans <= accSectionLength)
 		{
-			precurvature[0] = it->GetValue("ux");
-			precurvature[1] = it->GetValue("uy");
-			precurvature[2] = it->GetValue("uz");
+			//const double* sectionPrecurvature = it->GetPrecurvature();
+			//memcpy(precurvature, sectionPrecurvature, sizeof(double)*3);
+			*precurvature = it->GetPrecurvature();
+
 			return true;
 		} 
 	}

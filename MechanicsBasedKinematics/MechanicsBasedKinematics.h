@@ -15,6 +15,7 @@ class MechanicsBasedKinematics
 	std::vector<SE3> bishopFrames, perturbedBishopFrames;
 	Eigen::VectorXd boundaryConditionTip;
 	int maxIter;
+	double stepSize;
 
 public:
 	MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints = 100);
