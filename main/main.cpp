@@ -7,9 +7,11 @@
 
 void testCTR();
 void testKinematics();
+void testKinematicsSingleConfiguration();
 
 int main()
 {
+	//testKinematicsSingleConfiguration();
 	testKinematics();
 	
 	return 0;
@@ -80,6 +82,29 @@ void testKinematics()
 	double secondsPassed = timePassed / (double)CLOCKS_PER_SEC;
 
 	std::cout << "Freq. = " << numBVP/secondsPassed << std::endl;
+
+	_sleep(10000);
+}
+
+
+void testKinematicsSingleConfiguration()
+{
+	CTR* const robot = CTRFactory::buildCTR("");
+
+	MechanicsBasedKinematics kinematics(robot,100);
+	kinematics.ActivateIVPJacobian();
+
+	int numBVP = 1;
+	
+	double rotation[3] = {1,-1,0.5};
+	double translation[3] = {0, -17, -74};
+
+
+	if(kinematics.ComputeKinematics(rotation, translation))
+		std::cout << "Solved!!" << std::endl;
+	else
+		std::cout << "Failed!!" << std::endl;
+
 
 	kinematics.printSolution();
 	kinematics.printBishopFrame();

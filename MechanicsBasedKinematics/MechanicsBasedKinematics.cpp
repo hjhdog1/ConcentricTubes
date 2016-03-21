@@ -109,6 +109,9 @@ bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 	this->stepSize = 1.0;
 	int halfMaxIter = this->maxIter/2;
 
+	// scale arcLengthGrid to robot length
+	this->arcLengthGrid = this->normalizedArcLengthGrid * this->robot->GetLength();
+	
 	Eigen::VectorXd errorBC;
 	for(int i = 0; i < this->maxIter; ++i)
 	{
@@ -117,7 +120,7 @@ bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 		if(this->hasBVPConverged(solution, errorBC))
 			return true;
 		
-		this->computeBCJacobian(solution);
+		//this->computeBCJacobian(solution);
 		this->updateBC(errorBC);
 
 		if(i == halfMaxIter)
@@ -130,10 +133,7 @@ bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 }
 
 void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::VectorXd& boundaryConditions)
-{
-	// scale arcLengthGrid to robot length
-	this->arcLengthGrid = this->normailizedArcLengthGrid * this->robot->GetLength();
-	
+{	
 	int numTubes = this->robot->GetNumOfTubes();
 	int numGridPoints = this->arcLengthGrid.size();
 
@@ -156,10 +156,12 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 	vector<SO3> Rz(numTubes);
 	vector<Vec3> u_hat(numTubes);
 	std::vector<double> nu(numTubes);
-	vector<bool> existingTubeIDs(numTubes);
-
+	std::vector<bool> existingTubeIDs(numTubes);
+	std::vector<Vec3> Rzk_RotZpi_uhatk(numTubes);
+	
 	// Jacobian computation
 	Eigen::MatrixXd Phi_tt, Phi_tt_temp, Phi_ut, A;
+	SO3 RotZ_pi = RotZ(M_PI).GetOrientation();
 	if(isUsingIVPJacobian)
 	{
 		Phi_tt.resize(numTubes,numTubes);
@@ -173,26 +175,28 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 		A.setZero();
 	}	
 
+	double s, ds, momentSum, firstKz, first_u_hat_z, sumkxy, sumkz, duzds, nuj;
+	Vec3 sumRKu, u, u_curTube, Rzj_uhatj;
 	for(int i = numGridPoints-1; i > 0; --i)
 	{
-		double s = this->arcLengthGrid[i];
+		s = this->arcLengthGrid[i];
 		
 		// uz, theta
 
 		this->robot->GetExistingTubes(s, existingTubeIDs);
 
-		double momentSum = 0;
-		double firstKz = 0;
-		double first_u_hat_z = 0;
+		momentSum = 0;
+		firstKz = 0;
+		first_u_hat_z = 0;
 
-		double ds = s - this->arcLengthGrid[i-1];
+		ds = s - this->arcLengthGrid[i-1];
 
 		// integrate theta
 		solution.block(0,i-1, numTubes,1) = solution.block(0,i, numTubes,1) - solution.block(numTubes,i, numTubes,1) * ds;
 
 		// compute uxy
-		double sumkxy = 0, sumkz = 0;
-		Vec3 sumRKu(0);
+		sumkxy = 0, sumkz = 0;
+		sumRKu.SetValues(0,0,0);
 
 		for (int j = 0; j < numTubes; ++j)
 		{
@@ -203,21 +207,20 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 			this->robot->ComputePrecurvature(s, j, &precurvature);
 			u_hat[j] = Vec3(precurvature[0], precurvature[1], precurvature[2]);
 
-			double kxy = stiffness[j];
 			nu[j] = poissonsRatio[j];
-			double kz = kxy / (1 + nu[j]);
-			sumkxy += kxy;
+			double kz = stiffness[j] / (1 + nu[j]);
+			sumkxy += stiffness[j];
 			sumkz += kz;
 
-			double theta = solution(j, i);
-			Rz[j] = RotZ(theta).GetOrientation(); //Exp(0, 0, theta);
-			sumRKu += Rz[j] * Vec3(kxy * u_hat[j][0], kxy * u_hat[j][1], kz * u_hat[j][2]);
+			Rz[j] = RotZ(solution(j, i)).GetOrientation(); //Exp(0, 0, theta);
+			sumRKu += Rz[j] * Vec3(stiffness[j] * u_hat[j][0], stiffness[j] * u_hat[j][1], kz * u_hat[j][2]);
 		}
-		Eigen::VectorXd m0 = solution.block(2*numTubes, i, 3,1);
-		sumRKu += Vec3(m0[0], m0[1], m0[2]);
+		sumRKu[0] += solution(2*numTubes,i);
+		sumRKu[1] += solution(2*numTubes+1,i);
+		sumRKu[2] += solution(2*numTubes+2,i);
 
-		Vec3 inv_sumK(1 / sumkxy, 1 / sumkxy, 1 / sumkz);
-		Vec3 u(inv_sumK[0] * sumRKu[0], inv_sumK[1] * sumRKu[1], inv_sumK[2] * sumRKu[2]);	// z components doesn't seem to be used any where.
+		//Vec3 u(sumRKu[0] / sumkxy, sumRKu[1] / sumkxy, sumRKu[2] / sumkz);	// z components doesn't seem to be used any where.
+		u.SetValues(sumRKu[0] / sumkxy, sumRKu[1] / sumkxy, sumRKu[2] / sumkz);	// z components doesn't seem to be used any where.
 
 		solution(solution.rows()-2,i) = u[0];
 		solution(solution.rows()-1,i) = u[1];
@@ -229,9 +232,9 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 			if (!existingTubeIDs[j])
 				continue;
 
-			Vec3 u_curTube = Inv(Rz[j]) * u;
+			u_curTube = Inv(Rz[j]) * u;
 
-			double duzds = (1+nu[j]) * (u_curTube[0]*u_hat[j][1] - u_curTube[1]*u_hat[j][0]);
+			duzds = (1+nu[j]) * (u_curTube[0]*u_hat[j][1] - u_curTube[1]*u_hat[j][0]);
 
 			solution(numTubes + j, i-1) = solution(numTubes + j, i) - duzds * ds;
 		}
@@ -240,23 +243,30 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 
 
 		// Computing A
-		A.setZero();
 		if(isUsingIVPJacobian)
 		{
+			for(int k = 0; k < numTubes; ++k)
+				Rzk_RotZpi_uhatk[k] = Rz[k] * (RotZ_pi * u_hat[k]);
+
 			for(int j = 0; j < numTubes; ++j)
 			{
 				if(!existingTubeIDs[j])
 					continue;
+
+				nuj = 1+nu[j];
+				Rzj_uhatj = Rz[j]*u_hat[j];
 
 				for(int k = 0; k < numTubes; ++k)
 				{
 					if(!existingTubeIDs[k])
 						continue;
 
-					A(j,k) = (1+nu[j]) * stiffness[k]/sumkxy * Inner(Rz[j]*u_hat[j], Rz[k] * RotZ(M_PI).GetOrientation() * u_hat[k]);
+					A(j,k) = nuj * stiffness[k]/sumkxy * Inner(Rzj_uhatj, Rzk_RotZpi_uhatk[k]);
 				
 					if (j == k)
-						A(j,k) += (1+nu[j]) * Inner(Rz[j]*u_hat[j], u);
+						A(j,k) += nuj * Inner(Rzj_uhatj, u);
+						/*A(j,k) += (1+nu[j]) * ((Rz[j](0,0)*u_hat[j][0] + Rz[j](0,1)*u_hat[j][1])*u[0]
+												+ (Rz[j](1,0)*u_hat[j][0] + Rz[j](1,1)*u_hat[j][1])*u[1]);*/
 				}
 			}
 
@@ -264,7 +274,6 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 			Phi_tt += ds*Phi_ut;
 			Phi_ut += ds*A*Phi_tt_temp;
 		}
-
 
 	}
 	
@@ -279,8 +288,8 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 	}
 
 	// uxy at s = 0
-	double sumkxy = 0, sumkz = 0;
-	Vec3 sumRKu(0);
+	sumkxy = 0, sumkz = 0;
+	sumRKu.SetValues(0,0,0);
 	//vector<SO3> Rz(numTubes);
 	//vector<Vec3> u_hat(numTubes);
 	//std::vector<double> nu(numTubes);
@@ -291,21 +300,19 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 		this->robot->ComputePrecurvature(this->arcLengthGrid[0], j, &precurvature);
 		u_hat[j] = Vec3(precurvature[0], precurvature[1], precurvature[2]);
 
-		double kxy = this->robot->GetStiffness(j);
 		nu[j] = this->robot->GetPoissonsRatio(j);
-		double kz = kxy / (1 + nu[j]);
-		sumkxy += kxy;
+		double kz = stiffness[j] / (1 + nu[j]);
+		sumkxy += stiffness[j];
 		sumkz += kz;
 
-		double theta = solution(j, 0);
-		Rz[j] = Exp(0, 0, theta);
-		sumRKu += Rz[j] * Vec3(kxy * u_hat[j][0], kxy * u_hat[j][1], kz * u_hat[j][2]);
+		Rz[j] = RotZ(solution(j, 0)).GetOrientation();
+		sumRKu += Rz[j] * Vec3(stiffness[j] * u_hat[j][0], stiffness[j] * u_hat[j][1], kz * u_hat[j][2]);
 	}
-	Eigen::VectorXd m0 = solution.block(2*numTubes, 0, 3,1);
-	sumRKu += Vec3(m0[0], m0[1], m0[2]);
+	sumRKu[0] += solution(2*numTubes,0);
+	sumRKu[1] += solution(2*numTubes+1,0);
+	sumRKu[2] += solution(2*numTubes+2,0);
 
-	Vec3 inv_sumK(1 / sumkxy, 1 / sumkxy, 1 / sumkz);
-	Vec3 u(inv_sumK[0] * sumRKu[0], inv_sumK[1] * sumRKu[1], inv_sumK[2] * sumRKu[2]);
+	u.SetValues(sumRKu[0] / sumkxy, sumRKu[1] / sumkxy, sumRKu[2] / sumkz);
 
 	solution(solution.rows()-2,0) = u[0];
 	solution(solution.rows()-1,0) = u[1];
@@ -472,7 +479,7 @@ void MechanicsBasedKinematics::Initialization(int numOfGridPoints)
 	int numTubes = this->robot->GetNumOfTubes();
 
 	this->arcLengthGrid.resize(numOfGridPoints);
-	this->normailizedArcLengthGrid.resize(numOfGridPoints);
+	this->normalizedArcLengthGrid.resize(numOfGridPoints);
 	this->BVPSolutionGrid.resize(2*numTubes+8, numOfGridPoints);
 	this->perturbedSolGrid.resize(2*numTubes+8, numOfGridPoints);
 	this->jacobianBC.resize(numTubes, numTubes);
@@ -492,5 +499,5 @@ void MechanicsBasedKinematics::Initialization(int numOfGridPoints)
 
 	// normalizedArcLengthGrid
 	for(int i = 0; i < numOfGridPoints; ++i)
-		normailizedArcLengthGrid[i] = 1.0/((double)numOfGridPoints-1.0)*(double)i;
+		normalizedArcLengthGrid[i] = 1.0/((double)numOfGridPoints-1.0)*(double)i;
 }

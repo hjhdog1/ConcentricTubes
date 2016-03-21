@@ -8,7 +8,7 @@
 class MechanicsBasedKinematics
 {
 	CTR* robot;
-	Eigen::VectorXd arcLengthGrid, normailizedArcLengthGrid;
+	Eigen::VectorXd arcLengthGrid, normalizedArcLengthGrid;
 	Eigen::MatrixXd BVPSolutionGrid, perturbedSolGrid;
 	Eigen::MatrixXd jacobianBC;
 	//SE3 baseFrameTransformation;
