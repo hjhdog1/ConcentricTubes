@@ -4,7 +4,7 @@
 #define CTR_EPSILON 0.0001
 
 MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints)
-	: maxIter(500), stepSize(1.0)
+	: maxIter(500), stepSize(1.0), isUsingIVPJacobian(false)
 {
 	this->robot = _robot;
 	Initialization(numOfGridPoints);
@@ -158,6 +158,21 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 	std::vector<double> nu(numTubes);
 	vector<bool> existingTubeIDs(numTubes);
 
+	// Jacobian computation
+	Eigen::MatrixXd Phi_tt, Phi_tt_temp, Phi_ut, A;
+	if(isUsingIVPJacobian)
+	{
+		Phi_tt.resize(numTubes,numTubes);
+		Phi_tt.setIdentity();
+		Phi_tt_temp = Phi_tt;
+		
+		Phi_ut.resize(numTubes,numTubes);
+		Phi_ut.setZero();
+		
+		A.resize(numTubes,numTubes);
+		A.setZero();
+	}	
+
 	for(int i = numGridPoints-1; i > 0; --i)
 	{
 		double s = this->arcLengthGrid[i];
@@ -223,6 +238,44 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 
 		// TODO: integrate m (moment) and n (force)
 
+
+		// Computing A
+		A.setZero();
+		if(isUsingIVPJacobian)
+		{
+			for(int j = 0; j < numTubes; ++j)
+			{
+				if(!existingTubeIDs[j])
+					continue;
+
+				for(int k = 0; k < numTubes; ++k)
+				{
+					if(!existingTubeIDs[k])
+						continue;
+
+					A(j,k) = (1+nu[j]) * stiffness[k]/sumkxy * Inner(Rz[j]*u_hat[j], Rz[k] * RotZ(M_PI).GetOrientation() * u_hat[k]);
+				
+					if (j == k)
+						A(j,k) += (1+nu[j]) * Inner(Rz[j]*u_hat[j], u);
+				}
+			}
+
+			Phi_tt_temp = Phi_tt;
+			Phi_tt += ds*Phi_ut;
+			Phi_ut += ds*A*Phi_tt_temp;
+		}
+
+
+	}
+	
+	// BVP Jacobian
+	if(isUsingIVPJacobian)
+	{
+		double* translation = this->robot->GetTranslation();
+		for(int i = 0; i< numTubes; ++i)
+			Phi_ut.row(i) *= translation[0] - translation[i];
+
+		jacobianBC = Phi_tt + Phi_ut;
 	}
 
 	// uxy at s = 0
@@ -272,9 +325,8 @@ void MechanicsBasedKinematics::updateBC(Eigen::VectorXd& errorBC)
 
 void MechanicsBasedKinematics::computeBCJacobian(Eigen::MatrixXd& solution)
 {
-	this->ComputeBCJacobianNumerical(solution);
-
-	// TODO this->computeBCJacobianAnalytical()
+	if(!isUsingIVPJacobian)
+		this->ComputeBCJacobianNumerical(solution);
 }
 
 

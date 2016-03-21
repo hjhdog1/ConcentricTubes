@@ -11,7 +11,7 @@ void testKinematics();
 int main()
 {
 	testKinematics();
-
+	
 	return 0;
 }
 
@@ -43,6 +43,7 @@ void testKinematics()
 	CTR* const robot = CTRFactory::buildCTR("");
 
 	MechanicsBasedKinematics kinematics(robot,100);
+	kinematics.ActivateIVPJacobian();
 
 	int numBVP = 1000;
 	double rotation[3] = {0,0,0};

@@ -17,6 +17,8 @@ class MechanicsBasedKinematics
 	int maxIter;
 	double stepSize;
 
+	bool isUsingIVPJacobian;
+
 public:
 	MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints = 100);
 	~MechanicsBasedKinematics();
@@ -27,6 +29,8 @@ public:
 
 	void printSolution(string filename = "../solution.txt") const;
 	void printBishopFrame(string filename = "../frame.txt") const;
+
+	void ActivateIVPJacobian() {this->isUsingIVPJacobian = true;};
 
 private:
 	bool updateConfiguration (double* rotation, double* translation);
