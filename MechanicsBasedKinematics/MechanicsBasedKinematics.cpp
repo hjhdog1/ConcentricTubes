@@ -195,7 +195,7 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 			sumkz += kz;
 
 			double theta = solution(j, i);
-			Rz[j] = Exp(0, 0, theta);
+			Rz[j] = RotZ(theta).GetOrientation(); //Exp(0, 0, theta);
 			sumRKu += Rz[j] * Vec3(kxy * u_hat[j][0], kxy * u_hat[j][1], kz * u_hat[j][2]);
 		}
 		Eigen::VectorXd m0 = solution.block(2*numTubes, i, 3,1);
