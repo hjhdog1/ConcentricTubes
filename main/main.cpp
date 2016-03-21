@@ -44,7 +44,7 @@ void testKinematics()
 
 	MechanicsBasedKinematics kinematics(robot,100);
 
-	int numBVP = 3000;
+	int numBVP = 1000;
 	double rotation[3] = {0,0,0};
 	double translation[3] = {0,0,0};
 
