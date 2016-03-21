@@ -152,12 +152,18 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 		poissonsRatio[i] = this->robot->GetPoissonsRatio(i);
 	}
 
+
+	vector<SO3> Rz(numTubes);
+	vector<Vec3> u_hat(numTubes);
+	std::vector<double> nu(numTubes);
+	vector<bool> existingTubeIDs(numTubes);
+
 	for(int i = numGridPoints-1; i > 0; --i)
 	{
 		double s = this->arcLengthGrid[i];
 		
 		// uz, theta
-		vector<bool> existingTubeIDs(numTubes);
+
 		this->robot->GetExistingTubes(s, existingTubeIDs);
 
 		double momentSum = 0;
@@ -172,10 +178,7 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 		// compute uxy
 		double sumkxy = 0, sumkz = 0;
 		Vec3 sumRKu(0);
-		vector<SO3> Rz(numTubes);
-		vector<Vec3> u_hat(numTubes);
 
-		std::vector<double> nu(numTubes);
 		for (int j = 0; j < numTubes; ++j)
 		{
 			if (!existingTubeIDs[j])
@@ -225,10 +228,9 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 	// uxy at s = 0
 	double sumkxy = 0, sumkz = 0;
 	Vec3 sumRKu(0);
-	vector<SO3> Rz(numTubes);
-	vector<Vec3> u_hat(numTubes);
-
-	std::vector<double> nu(numTubes);
+	//vector<SO3> Rz(numTubes);
+	//vector<Vec3> u_hat(numTubes);
+	//std::vector<double> nu(numTubes);
 	for (int j = 0; j < numTubes; ++j)
 	{
 		//double precurvature[3];
