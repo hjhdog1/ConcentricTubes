@@ -1,17 +1,16 @@
 ﻿#pragma once
 
-#include <map>
 #include <vector>
 
 
 class Part
 {
-    protected:
-		std::vector<double*> freeParameters;
+  //  protected:
+		//std::vector<double*> freeParameters;
 
-    public:
+  //  public:
 
-		std::vector<double*>& GetFreeParameters ();
+		//std::vector<double*>& GetFreeParameters ();
 
 		
 };

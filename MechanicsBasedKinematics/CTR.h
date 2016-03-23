@@ -20,6 +20,8 @@ public:
         double* upperTubeTranslationLimit;
         double* lowerTubeTranslationLimit;
         int numTubes;
+		std::vector<double*> freeParameters;
+		std::vector<double> variances;
 
     protected:
         void UpdateLength ();
@@ -42,6 +44,8 @@ public:
 		double* GetRotation() const {return this->tubeRotation;};
 		double* GetTranslation() const {return this->tubeTranslation;};
         std::vector<Tube>& GetTubes ();
+		const std::vector<double*>& GetFreeParameters() const {return this->freeParameters;};
+		const std::vector<double>& GetFreeParameterVariances() const {return this->variances;};
 
 		void GetExistingTubes(const double s, std::vector<bool>& tubeIDs) const;
 
