@@ -81,7 +81,7 @@ void testKinematics()
 	clock_t timePassed =  testTime - startTime;
 	double secondsPassed = timePassed / (double)CLOCKS_PER_SEC;
 
-	std::cout << "Freq. = " << numBVP/secondsPassed << std::endl;
+	std::cout << "Freq. = " << numBVP/secondsPassed << "Hz" << std::endl;
 
 	_sleep(10000);
 }
