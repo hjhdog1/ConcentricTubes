@@ -20,9 +20,9 @@ int main()
 	//testKinematics();
 	//testFreeParameters();
 
-	//testUKF();
+	testUKF();
 
-	testSimulator();
+	//testSimulator();
 	
 	return 0;
 }
@@ -39,10 +39,29 @@ void testSimulator()
 void testUKF()
 {
 	CTR* robot = CTRFactory::buildCTR("");
+
+	SyntheticDataGenerator simulator(robot, "../jointTrajectory.txt");
+	simulator.GenerateTipTrajectory();
+
 	double measVar[6] = {1,1,1,0.1,0.1,0.1};
 	std:vector<double> measVarSTL(measVar, measVar+6);
-	UKF* ukf = new UKF(robot, robot->GetFreeParameterVariances(), measVarSTL);
-	ukf->Initialize();
+	UKF ukf(robot, robot->GetFreeParameterVariances(), measVarSTL);
+	//ukf.Initialize();
+
+	
+	vector<double*> freeParameters = robot->GetFreeParameters();
+	for(int i = 0; i < freeParameters.size(); ++i)
+		*freeParameters[i] *= 1.5;
+	
+
+	double pos[3], ori[9];
+	while(simulator.LoadOneMeasurement(pos, &ori[6]))
+	{
+		ukf.StepFilter(ori, pos);
+		for(int i = 0; i < freeParameters.size(); ++i)
+			std::cout << *freeParameters[i] << "\t";
+		std::cout << std::endl;
+	}
 
 }
 

@@ -5,6 +5,7 @@
 ::std::vector< double> DoubleVectorFromString(const ::std::string& inputString);
 
 SyntheticDataGenerator::SyntheticDataGenerator(CTR* _robot, std::string _jointTrajectoryFile)
+	: lineCounter(0)
 {
 	this->robot = _robot;
 	
@@ -89,4 +90,18 @@ void SyntheticDataGenerator::PrintTipTrajectory(std::string _tipTrajectoryFile)
 	result.pop_back();
 
 	return result;
+}
+
+bool SyntheticDataGenerator::LoadOneMeasurement(double* pos, double* ori)
+{
+	if(this->lineCounter >= this->tipTrajectory.size())
+		return false;
+
+	memcpy(pos, this->tipTrajectory[this->lineCounter].data(), sizeof(double)*this->robot->GetNumOfTubes());
+	memcpy(ori, this->tipTrajectory[this->lineCounter].data()+this->robot->GetNumOfTubes(), sizeof(double)*this->robot->GetNumOfTubes());
+
+	this->lineCounter++;
+
+	return true;
+
 }
