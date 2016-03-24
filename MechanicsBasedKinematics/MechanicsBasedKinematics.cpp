@@ -28,6 +28,11 @@ bool MechanicsBasedKinematics::ComputeKinematics(double* rotation, double* trans
 	return true;
 }
 
+void MechanicsBasedKinematics::GetBishopFrame(SE3& bishopFrame)
+{
+	bishopFrame = this->bishopFrames.back();
+}
+
 void MechanicsBasedKinematics::GetBishopFrame(double s, SE3& bishopFrame)
 {
 	GetBishopFrame(s, bishopFrame, this->bishopFrames);

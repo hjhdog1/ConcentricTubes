@@ -23,6 +23,7 @@ public:
 	MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints = 100);
 	~MechanicsBasedKinematics();
 	bool ComputeKinematics(double* rotation, double* translation);
+	void GetBishopFrame(SE3& bishopFrame);
 	void GetBishopFrame(double s, SE3& bishopFrame);
 	void GetBishopFrame(std::vector<double> s, std::vector<SE3>& bishopFrame);
 	bool GetControlJacobian(double s, Eigen::MatrixXd& controlJacobian);

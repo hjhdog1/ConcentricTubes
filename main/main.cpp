@@ -1,10 +1,15 @@
 #include <iostream>
 #include "CTRFactory.h"
 #include "MechanicsBasedKinematics.h"
+#include "UKF.h"
+#include "SyntheticDataGenerator.h"
 
 // timer
 #include <ctime>
 
+void testSimulator();
+void testUKF();
+void testFreeParameters();
 void testCTR();
 void testKinematics();
 void testKinematicsSingleConfiguration();
@@ -12,9 +17,46 @@ void testKinematicsSingleConfiguration();
 int main()
 {
 	//testKinematicsSingleConfiguration();
-	testKinematics();
+	//testKinematics();
+	//testFreeParameters();
+
+	//testUKF();
+
+	testSimulator();
 	
 	return 0;
+}
+
+void testSimulator()
+{
+	CTR* robot = CTRFactory::buildCTR("");
+	
+	SyntheticDataGenerator syntheticData(robot, "../jointTrajectory.txt");
+	syntheticData.GenerateTipTrajectory();
+	syntheticData.PrintTipTrajectory("../tipTrajectory.txt");
+}
+
+void testUKF()
+{
+	CTR* robot = CTRFactory::buildCTR("");
+	double measVar[6] = {1,1,1,1,1,1};
+	std:vector<double> measVarSTL(measVar, measVar+6);
+	UKF* ukf = new UKF(robot, robot->GetFreeParameterVariances(), measVarSTL);
+	ukf->Initialize();
+
+}
+
+void testFreeParameters()
+{
+	CTR* robot = CTRFactory::buildCTR("");
+
+	std::vector<double*> freeParameters = robot->GetFreeParameters();
+	
+	std::cout << "Initial value = " << robot->GetTubes()[0].GetBendingStiffness() << std::endl;
+	*freeParameters[0] = 2;
+	std::cout << "Changed value = " << robot->GetTubes()[0].GetBendingStiffness() << std::endl;
+	
+	_sleep(10000);
 }
 
 void testCTR()
@@ -96,8 +138,8 @@ void testKinematicsSingleConfiguration()
 
 	int numBVP = 1;
 	
-	double rotation[3] = {1,-1,0.5};
-	double translation[3] = {0, -17, -74};
+	double rotation[3] = {0, 6.28318531, 6.28318531};
+	double translation[3] = {0, -17.00000000, -104.00000000 };
 
 
 	if(kinematics.ComputeKinematics(rotation, translation))
