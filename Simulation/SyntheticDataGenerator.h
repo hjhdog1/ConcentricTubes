@@ -19,7 +19,7 @@ public:
 	void GenerateTipTrajectory();
 	void PrintTipTrajectory(std::string _tipTrajectoryfile);
 
-	bool LoadOneMeasurement(double* pos, double* ori);
+	bool LoadOneMeasurement(double* pos, double* ori, double* rotation, double* translation);
 	void RewindTrajectory() {this->lineCounter = 0;};
 
 };

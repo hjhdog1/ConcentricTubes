@@ -92,14 +92,16 @@ void SyntheticDataGenerator::PrintTipTrajectory(std::string _tipTrajectoryFile)
 	return result;
 }
 
-bool SyntheticDataGenerator::LoadOneMeasurement(double* pos, double* ori)
+bool SyntheticDataGenerator::LoadOneMeasurement(double* pos, double* ori, double* rotation, double* translation)
 {
 	if(this->lineCounter >= this->tipTrajectory.size())
 		return false;
 
-	memcpy(pos, this->tipTrajectory[this->lineCounter].data(), sizeof(double)*this->robot->GetNumOfTubes());
-	memcpy(ori, this->tipTrajectory[this->lineCounter].data()+this->robot->GetNumOfTubes(), sizeof(double)*this->robot->GetNumOfTubes());
+	memcpy(pos, this->tipTrajectory[this->lineCounter].data(), sizeof(double)*3);
+	memcpy(ori, this->tipTrajectory[this->lineCounter].data() + 3, sizeof(double)*3);
 
+	memcpy(rotation, this->jointTrajectory[this->lineCounter].data() + 1, sizeof(double) * this->robot->GetNumOfTubes());
+	memcpy(translation, this->jointTrajectory[this->lineCounter].data() + 1 + this->robot->GetNumOfTubes(), sizeof(double) * this->robot->GetNumOfTubes());
 	this->lineCounter++;
 
 	return true;

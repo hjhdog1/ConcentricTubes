@@ -15,6 +15,7 @@ UKF::~UKF()
 void UKF::Initialize()
 {
 	this->kinematics = new MechanicsBasedKinematics(this->robot);
+	this->kinematics->ActivateIVPJacobian();
 	
 	this->parameters = this->robot->GetFreeParameters();
 	
@@ -33,9 +34,11 @@ void UKF::Initialize()
 	this->measurementEig.setZero();
 
 	this->Wm.resize(2*this->augDim + 1);
+	this->Wm.setZero();
 
 	this->Wc.resize(2*this->augDim + 1, 2*this->augDim + 1);
-	
+	this->Wc.setZero();
+
 	this->updateLambda();	// This will update the weights (Wc, Wm) as well as lambda.
 
 	this->covAState.resize(this->augDim, this->augDim);
@@ -87,6 +90,8 @@ void UKF::SetKappa(double _kappa)
 
 void UKF::predict()
 {
+	this->updateSigmaPoints();
+
 	int numOfSigmaPoints = 2*this->augDim + 1;
 	
 	this->sigmaPoints.block(0,0,this->stateDim, numOfSigmaPoints) += this->sigmaPoints.block(this->stateDim,0,this->stateDim, numOfSigmaPoints);
@@ -95,7 +100,7 @@ void UKF::predict()
 	
 	this->dX = this->sigmaPoints.block(0,0,this->stateDim, numOfSigmaPoints);
 	for(int i = 0; i < numOfSigmaPoints; ++i)
-		this->dX -= this->meanAState.segment(0,this->stateDim);
+		this->dX.col(i) -= this->meanAState.segment(0,this->stateDim);
 
 	this->covAState.block(0,0,this->stateDim, this->stateDim) = this->dX * this->Wc * this->dX.transpose();
 }
@@ -138,6 +143,8 @@ bool UKF::update()
 	this->meanAState.segment(0,this->stateDim) += KalmanGain * (this->measurementEig - meanY);
 
 	this->covAState.block(0,0,this->stateDim,this->stateDim) -= KalmanGain * Pyy * KalmanGain.transpose();
+
+	this->updateModelParameters();
 
 	return true;
 }

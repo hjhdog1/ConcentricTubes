@@ -40,28 +40,35 @@ void testUKF()
 {
 	CTR* robot = CTRFactory::buildCTR("");
 
-	SyntheticDataGenerator simulator(robot, "../jointTrajectory.txt");
+	SyntheticDataGenerator simulator(robot, "../jointTrajectoryFull.txt");
 	simulator.GenerateTipTrajectory();
+
+	vector<double> nominalValues;
+	vector<double*> freeParameters = robot->GetFreeParameters();
+	for(int i = 0; i < freeParameters.size(); ++i)
+	{
+		nominalValues.push_back(*freeParameters[i]);
+		*freeParameters[i] *= 0.01;
+	}
 
 	double measVar[6] = {1,1,1,0.1,0.1,0.1};
 	std:vector<double> measVarSTL(measVar, measVar+6);
 	UKF ukf(robot, robot->GetFreeParameterVariances(), measVarSTL);
-	//ukf.Initialize();
-
-	
-	vector<double*> freeParameters = robot->GetFreeParameters();
-	for(int i = 0; i < freeParameters.size(); ++i)
-		*freeParameters[i] *= 1.5;
+	ukf.Initialize();
 	
 
-	double pos[3], ori[9];
-	while(simulator.LoadOneMeasurement(pos, &ori[6]))
+	double pos[3], ori[9], rotation[3], translation[3];
+	while(simulator.LoadOneMeasurement(pos, &ori[6], rotation, translation))
 	{
+		robot->UpdateConfiguration(rotation, translation);
 		ukf.StepFilter(ori, pos);
 		for(int i = 0; i < freeParameters.size(); ++i)
-			std::cout << *freeParameters[i] << "\t";
+			std::cout << *freeParameters[i] - nominalValues[i] << "\t";
 		std::cout << std::endl;
 	}
+
+
+	_sleep(10000);
 
 }
 

@@ -42,8 +42,11 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 	// free parameters - Poisson's ratios of all tubes should be synced.
 	for(int i = 0 ; i < 3; ++i)
 	{
-		robot->freeParameters.push_back(&robot->tubes[i].kxy);
-		robot->variances.push_back(1);
+		if(i != 0)
+		{
+			robot->freeParameters.push_back(&robot->tubes[i].kxy);
+			robot->variances.push_back(1);
+		}
 
 		robot->freeParameters.push_back(&robot->tubes[i].sections.back().precurvature[1]);
 		robot->variances.push_back(0.1);
