@@ -39,7 +39,7 @@ void testSimulator()
 void testUKF()
 {
 	CTR* robot = CTRFactory::buildCTR("");
-	double measVar[6] = {1,1,1,1,1,1};
+	double measVar[6] = {1,1,1,0.1,0.1,0.1};
 	std:vector<double> measVarSTL(measVar, measVar+6);
 	UKF* ukf = new UKF(robot, robot->GetFreeParameterVariances(), measVarSTL);
 	ukf->Initialize();
