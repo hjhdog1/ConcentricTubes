@@ -14,9 +14,11 @@ class SyntheticDataGenerator
 	int lineCounter;
 
 public:
+	SyntheticDataGenerator(CTR* _robot);
 	SyntheticDataGenerator(CTR* _robot, std::string _jointTrajectoryFile);
 	~SyntheticDataGenerator();
 	void GenerateTipTrajectory();
+	void ReadJointAndTipTrajectory(std::string _jointTipTrajectoryfile, bool isEMmeasurement = true);
 	void PrintTipTrajectory(std::string _tipTrajectoryfile);
 
 	bool LoadOneMeasurement(double* pos, double* ori, double* rotation, double* translation);

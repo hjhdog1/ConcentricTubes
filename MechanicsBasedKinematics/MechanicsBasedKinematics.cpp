@@ -4,7 +4,7 @@
 #define CTR_EPSILON 0.0001
 
 MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints)
-	: maxIter(500), stepSize(1.0), isUsingIVPJacobian(false)
+	: maxIter(100), stepSize(1.0), isUsingIVPJacobian(false)
 {
 	this->robot = _robot;
 	Initialization(numOfGridPoints);
@@ -331,6 +331,8 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 
 void MechanicsBasedKinematics::updateBC(Eigen::VectorXd& errorBC)
 {
+	checkJacobianCondition();
+
 	boundaryConditionTip += this->stepSize * this->jacobianBC.inverse() * errorBC;
 	//std::cout << "BC at Tip = [" << boundaryConditionTip.transpose() << "]" << std::endl;
 }
@@ -505,4 +507,36 @@ void MechanicsBasedKinematics::Initialization(int numOfGridPoints)
 	// normalizedArcLengthGrid
 	for(int i = 0; i < numOfGridPoints; ++i)
 		normalizedArcLengthGrid[i] = 1.0/((double)numOfGridPoints-1.0)*(double)i;
+}
+
+void MechanicsBasedKinematics::checkJacobianCondition()
+{
+	Eigen::JacobiSVD<Eigen::MatrixXd> svd(this->jacobianBC, Eigen::ComputeThinU | Eigen::ComputeThinV);
+	
+	double maxSingularValue = svd.singularValues()(0);
+	double minSingularValue = svd.singularValues()(this->jacobianBC.cols() - 1);
+	double conditionNumber = maxSingularValue / minSingularValue;
+
+	double conditionThreshold = 100;
+	if(conditionNumber > conditionThreshold)
+	{
+		//double epsilon = conditionThreshold * minSingularValue - maxSingularValue;
+		//epsilon /= 1 - conditionThreshold;
+		//this->jacobianBC += epsilon * svd.matrixU() * svd.matrixV().transpose();
+		for(int i = 0 ; i < this->jacobianBC.rows() ; ++i)
+			this->jacobianBC(i,i) += 1;
+		//this->jacobianBC += epsilon * svd.matrixU() * svd.matrixV().transpose();
+
+		//
+		//Eigen::JacobiSVD<Eigen::MatrixXd> svd2(this->jacobianBC, Eigen::ComputeThinU | Eigen::ComputeThinV);
+	
+		//double maxSingularValue2 = svd2.singularValues()(0);
+		//double minSingularValue2 = svd2.singularValues()(this->jacobianBC.cols() - 1);
+		//double conditionNumber2 = maxSingularValue2 / minSingularValue2;
+
+		//std::cout<< "condition number = " << conditionNumber2 << std::endl;
+
+	}
+
+
 }

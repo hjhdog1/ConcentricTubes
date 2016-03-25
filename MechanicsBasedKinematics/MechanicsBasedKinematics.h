@@ -46,4 +46,5 @@ private:
 	void ComputeBCJacobianNumerical(Eigen::MatrixXd& solution);
 	void ComputeBCAtBase(const Eigen::VectorXd& solutionAtBase, const double* tubeTranslation, Eigen::VectorXd& estimatedBC);
 	void Initialization(int numOfGridPoints);
+	void checkJacobianCondition();
 };
