@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include "CTRFactory.h"
 #include "MechanicsBasedKinematics.h"
 #include "UKF.h"
@@ -24,6 +25,10 @@ int main()
 
 	//testSimulator();
 	
+	
+	
+	std::cout << "Finished. Press enter to close." << std::endl;
+	std::cin.ignore();
 	return 0;
 }
 
@@ -31,27 +36,42 @@ void testSimulator()
 {
 	CTR* robot = CTRFactory::buildCTR("");
 	
-	SyntheticDataGenerator syntheticData(robot, "../jointTrajectory.txt");
+	//vector<double> nominalValues;
+	//vector<double*> freeParameters = robot->GetFreeParameters();
+	//for(int i = 0; i < freeParameters.size(); ++i)
+	//{
+	//	nominalValues.push_back(*freeParameters[i]);
+	//	*freeParameters[i] *= 1.4;
+	//}
+
+	SyntheticDataGenerator syntheticData(robot, "../jointTipTrajectory_measured.txt");
 	syntheticData.GenerateTipTrajectory();
-	syntheticData.PrintTipTrajectory("../tipTrajectory.txt");
+	syntheticData.PrintTipTrajectory("../jointTipTrajectory_theoretical.txt");
+
+	
+	_sleep(10000);
 }
 
 void testUKF()
 {
 	CTR* robot = CTRFactory::buildCTR("");
 
-	SyntheticDataGenerator simulator(robot, "../jointTrajectoryFull.txt");
-	simulator.GenerateTipTrajectory();
+	//SyntheticDataGenerator simulator(robot, "../jointTrajectoryFull.txt");
+	//simulator.GenerateTipTrajectory();
 
-	vector<double> nominalValues;
-	vector<double*> freeParameters = robot->GetFreeParameters();
+	SyntheticDataGenerator simulator(robot);
+	//simulator.ReadJointAndTipTrajectory("../jointTipTrajectory_measured.txt");
+	simulator.ReadJointAndTipTrajectory("../jointTipTrajectory_theoretical.txt", false);
+
+	std::vector<double> nominalValues;
+	std::vector<double*> freeParameters = robot->GetFreeParameters();
 	for(int i = 0; i < freeParameters.size(); ++i)
 	{
 		nominalValues.push_back(*freeParameters[i]);
-		*freeParameters[i] *= 1.;
+		*freeParameters[i] *= 1.25;
 	}
 
-	double measVar[6] = {1,1,1,0.1,0.1,0.1};
+	double measVar[6] = {1, 1, 1, 0.1, 0.1, 0.1};
 	double var[6] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
 	std:vector<double> measVarSTL(measVar, measVar+6);
 	UKF ukf(robot, robot->GetFreeParameterVariances(), measVarSTL);
@@ -59,26 +79,22 @@ void testUKF()
 	
 
 	double pos[3], ori[9], rotation[3], translation[3];
-
-	clock_t startTime = clock(); //Start timer
-	int counter = 1;
-	while(simulator.LoadOneMeasurement(pos, &ori[6], rotation, translation))
+	while(simulator.LoadOneMeasurement(pos, ori, rotation, translation))
 	{
 		robot->UpdateConfiguration(rotation, translation);
 		ukf.StepFilter(ori, pos);
 		for(int i = 0; i < freeParameters.size(); ++i)
-			std::cout << *freeParameters[i] - nominalValues[i] << "\t";
+			std::cout << std::fixed << std::setprecision(1) << (*freeParameters[i] - nominalValues[i])/nominalValues[i] * 100 << "%\t";
+
+		//std::cout << std::setprecision(5) << "\t" << *freeParameters[0] << "\t" << 1 / *freeParameters[1] << "\t" << *freeParameters[2] << "\t"  << 1 / *freeParameters[3];
+		//std::cout << std::setprecision(5) << 1 / *freeParameters[0] << "\t" << *freeParameters[1] << "\t" << 1 / *freeParameters[2] << "\t" << *freeParameters[3] << "\t"  << 1 / *freeParameters[4];
+		//std::cout << std::setprecision(5) << 1 / *freeParameters[0] << "\t" << 1 / *freeParameters[1] << "\t" << 1 / *freeParameters[2];
+
 		std::cout << std::endl;
 		counter++;
 	}
 
-	clock_t testTime = clock(); // end timer
-	clock_t timePassed =  testTime - startTime;
-	double secondsPassed = timePassed / (double)CLOCKS_PER_SEC;
-
-	std::cout << "Freq. = " << counter/secondsPassed << "Hz" << std::endl;
-
-	_sleep(10000);
+	//_sleep(10000);
 
 }
 
