@@ -21,9 +21,9 @@
 //						v0.95 supports /, % operators in SE3 class
 //
 //////////////////////////////////////////////////////////////////////////////////
-
-#ifndef SRLIB_LIE_ALGEBRA
-#define SRLIB_LIE_ALGEBRA
+#pragma once
+//#ifndef SRLIB_LIE_ALGEBRA
+//#define SRLIB_LIE_ALGEBRA
 
 #include <math.h>
 #include <assert.h>
@@ -1584,4 +1584,4 @@ private:
 
 #include "LieGroup.inl"
 
-#endif
+//#endif

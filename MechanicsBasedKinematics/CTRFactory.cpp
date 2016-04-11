@@ -9,7 +9,7 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 	double nu = 0.3;	// Poisson's ratio
 
     // Tube 1
-	double precurv[3] = {0.0, 1.0/264.0, 0.0};
+	double precurv[3] = {0.0, 1.0/265.0, 0.0};
 	Section sec1oftube1(150.0, precurv);
 	Tube tube1(1, nu);
 	tube1.AddSection(sec1oftube1);
@@ -18,7 +18,7 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 	// Tube 2
 	precurv[1] = 0.0;
 	Section straightSection(17.0,precurv);
-	precurv[1] = 1.0/264.0;
+	precurv[1] = 1.0/265.0;
 	Section sec2oftube2(150.0,precurv);
 	Tube tube2(1, nu);
 	tube2.AddSection(straightSection);
@@ -29,7 +29,7 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 	straightSection.sectionLength = 34.0 + 150.0;
 	precurv[1] = 1.0/55.0;
 	Section sec2oftube3(86.3938, precurv);
-	Tube tube3(0.286, nu);
+	Tube tube3(0.2857, nu);
 	tube3.AddSection(straightSection);
 	tube3.AddSection(sec2oftube3);
 

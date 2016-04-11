@@ -20,7 +20,7 @@ class MechanicsBasedKinematics
 	bool isUsingIVPJacobian;
 
 public:
-	MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints = 100);
+	MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints = 1000);
 	~MechanicsBasedKinematics();
 	bool ComputeKinematics(double* rotation, double* translation);
 	void GetBishopFrame(SE3& bishopFrame);

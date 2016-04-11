@@ -48,16 +48,20 @@ void testUKF()
 	for(int i = 0; i < freeParameters.size(); ++i)
 	{
 		nominalValues.push_back(*freeParameters[i]);
-		*freeParameters[i] *= 0.01;
+		*freeParameters[i] *= 1.;
 	}
 
 	double measVar[6] = {1,1,1,0.1,0.1,0.1};
+	double var[6] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
 	std:vector<double> measVarSTL(measVar, measVar+6);
 	UKF ukf(robot, robot->GetFreeParameterVariances(), measVarSTL);
 	ukf.Initialize();
 	
 
 	double pos[3], ori[9], rotation[3], translation[3];
+
+	clock_t startTime = clock(); //Start timer
+	int counter = 1;
 	while(simulator.LoadOneMeasurement(pos, &ori[6], rotation, translation))
 	{
 		robot->UpdateConfiguration(rotation, translation);
@@ -65,8 +69,14 @@ void testUKF()
 		for(int i = 0; i < freeParameters.size(); ++i)
 			std::cout << *freeParameters[i] - nominalValues[i] << "\t";
 		std::cout << std::endl;
+		counter++;
 	}
 
+	clock_t testTime = clock(); // end timer
+	clock_t timePassed =  testTime - startTime;
+	double secondsPassed = timePassed / (double)CLOCKS_PER_SEC;
+
+	std::cout << "Freq. = " << counter/secondsPassed << "Hz" << std::endl;
 
 	_sleep(10000);
 
