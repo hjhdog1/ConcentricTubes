@@ -16,27 +16,22 @@ void RecordTrainingSample(MechanicsBasedKinematics* kinematics, double* configur
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	// Load the robot
 	CTR* robot = CTRFactory::buildCTR("");
 	
-	// Initialize kinematics
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
 	kinematics->ActivateIVPJacobian();
 
-	// Open the file to store training data
 	::std::string filename = GetDateString() + "_training.txt";
 	::std::ofstream os(filename.c_str());
 
 	clock_t startTime = clock(); //Start timer
 
-	// Generate the grid points
-	int numOfPointPerDim = 50;
+	int numOfPointPerDim = 200;
 	::std::vector<double* > configurations;
 	GenerateSamples(robot, numOfPointPerDim, configurations);
 
 	::std::cout << "Generated " << configurations.size() << " configurations"  << ::std::endl;
 
-	// Compute the forward kinematics for each configuration and write the results to a file
 	int counter = 0;
 	for(::std::vector<double*>::iterator it = configurations.begin(); it != configurations.end(); ++it)
 	{

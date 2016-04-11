@@ -91,7 +91,6 @@ void testUKF()
 		//std::cout << std::setprecision(5) << 1 / *freeParameters[0] << "\t" << 1 / *freeParameters[1] << "\t" << 1 / *freeParameters[2];
 
 		std::cout << std::endl;
-		counter++;
 	}
 
 	//_sleep(10000);
