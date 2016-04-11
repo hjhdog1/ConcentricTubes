@@ -16,6 +16,7 @@ void RecordTrainingSample(MechanicsBasedKinematics* kinematics, double* configur
 
 int _tmain(int argc, _TCHAR* argv[])
 {
+	double* dum = new double;
 	CTR* robot = CTRFactory::buildCTR("");
 	
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
@@ -26,7 +27,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	clock_t startTime = clock(); //Start timer
 
-	int numOfPointPerDim = 200;
+	int numOfPointPerDim = 201;
 	::std::vector<double* > configurations;
 	GenerateSamples(robot, numOfPointPerDim, configurations);
 
@@ -54,14 +55,15 @@ int _tmain(int argc, _TCHAR* argv[])
 
 void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& configurations)
 {
-	double stepRotation = 3 * M_PI/(numOfPointsPerDim - 1);
+	double stepRotation = 2 * M_PI/(numOfPointsPerDim - 1);
 
+	double epsilon = 0.0001;
 	double collarLength = robot->GetTubes()[0].GetCollarLength();
-	double translationLimit = robot->GetLowerTubeJointLimits()[2];
-
-	double stepTranslation = translationLimit/(numOfPointsPerDim - 1);
-	double initialTranslation3 = - 2 * collarLength - translationLimit;
-	double initialConfiguration[6] = {0, -1.5 * M_PI, -1.5 * M_PI, 0, -collarLength, initialTranslation3};
+	double translationLowerLimit = robot->GetLowerTubeJointLimits()[2] + epsilon;
+	double translationUpperLimit = robot->GetUpperTubeJointLimits()[2] - epsilon;
+	double stepTranslation = (translationUpperLimit - translationLowerLimit)/(numOfPointsPerDim - 1);
+	
+	double initialConfiguration[6] = {0, -1.0 * M_PI, -1.0 * M_PI, 0, -collarLength, translationLowerLimit};
 
 	double* configuration = new double[6];
 
@@ -78,7 +80,7 @@ void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& 
 
 				initialConfiguration[5] += stepTranslation;
 			}
-			initialConfiguration[5] = initialTranslation3;
+			initialConfiguration[5] = translationLowerLimit;
 			initialConfiguration[2] += stepRotation;
 		}
 		initialConfiguration[2] = -M_PI;
@@ -88,12 +90,25 @@ void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& 
 
 void RecordTrainingSample(MechanicsBasedKinematics* kinematics ,double* configuration, ::std::ofstream& os)
 {
+	static int failedBVP = 0;
+	static int counter = 0;
+
 	double rotation[3] = {0};
 	double translation[3] = {0};
 	memcpy(rotation, configuration, sizeof(double) * 3);
 	memcpy(translation, &configuration[3], sizeof(double) * 3);
 
-	kinematics->ComputeKinematics(rotation, translation);
+	counter++;
+	if(!kinematics->ComputeKinematics(rotation, translation))
+	{
+		::std::cout << "Number of BVP Failures:" << double(++failedBVP)/counter << ::std::endl;;
+
+		PrintCArray(rotation, 3);
+		PrintCArray(translation, 3);
+
+		::std::cout << "-----------------" << ::std::endl;
+		return;
+	}
 
 	SE3 bishopFrame;
 	kinematics->GetBishopFrame(bishopFrame);

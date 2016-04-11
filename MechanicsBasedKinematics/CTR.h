@@ -50,5 +50,6 @@ public:
 		void GetExistingTubes(const double s, std::vector<bool>& tubeIDs) const;
 
 		const double* const& GetLowerTubeJointLimits() {return this->lowerTubeTranslationLimit;};
+		const double* const& GetUpperTubeJointLimits() {return this->upperTubeTranslationLimit;};
 
 };

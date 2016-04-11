@@ -4,7 +4,7 @@
 #define CTR_EPSILON 0.0001
 
 MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints)
-	: maxIter(100), stepSize(1.0), isUsingIVPJacobian(false)
+	: maxIter(5000), stepSize(1.0), isUsingIVPJacobian(false)
 {
 	this->robot = _robot;
 	Initialization(numOfGridPoints);
@@ -129,11 +129,11 @@ bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 		this->updateBC(errorBC);
 
 		if(i == halfMaxIter)
-			this->stepSize *= 0.5;
+			this->stepSize *= 0.05;
 		
 	}
 
-	std::cout << "BVP Failed!" <<std::endl;
+	//std::cout << "BVP Failed!" <<std::endl;
 	return false;
 }
 
@@ -385,6 +385,13 @@ bool MechanicsBasedKinematics::hasBVPConverged(Eigen::MatrixXd& solution, Eigen:
 
 	Eigen::VectorXd desiredBC = Eigen::Map<Eigen::VectorXd>(robotRotation, numTubes);
 	errorBC = desiredBC - estimatedBC;
+	double integralPart = 0;
+	for(int i = 0; i < 3; ++i)
+		errorBC[i] = 2 * M_PI * ::std::modf((errorBC[i] + M_PI)/(2*M_PI), &integralPart) - M_PI;
+
+	//for (int i = 0; i < 3; ++i)
+	//	errorBC[i] = atan2(sin(errorBC[i]), cos(errorBC[i])) + M_PI;
+
 	double errorNorm = errorBC.norm();
 	
 	//std::cout << "desired BC at Base = [" << desiredBC.transpose() << "], estimated BC at base = [" << estimatedBC.transpose() << "]"<< std::endl;

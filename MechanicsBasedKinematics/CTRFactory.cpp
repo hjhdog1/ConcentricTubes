@@ -27,7 +27,7 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 	// Tube 3
 	precurv[1] = 0.0;
 	straightSection.sectionLength = 34.0 + 150.0;
-	precurv[1] = 1.0/55.0;
+	precurv[1] = 1.0/70;
 	Section sec2oftube3(86.3938, precurv);
 	Tube tube3(0.2857, nu);
 	tube3.AddSection(straightSection);
