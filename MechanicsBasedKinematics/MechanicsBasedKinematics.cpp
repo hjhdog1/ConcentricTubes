@@ -4,7 +4,7 @@
 #define CTR_EPSILON 0.0001
 
 MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints)
-	: maxIter(5000), stepSize(1.0), isUsingIVPJacobian(false)
+	: maxIter(10000), stepSize(1.0), isUsingIVPJacobian(false)
 {
 	this->robot = _robot;
 	Initialization(numOfGridPoints);
@@ -112,7 +112,8 @@ bool MechanicsBasedKinematics::GetControlJacobian(double s, Eigen::MatrixXd& con
 bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 {
 	this->stepSize = 1.0;
-	int halfMaxIter = this->maxIter/2;
+	//int halfMaxIter = this->maxIter/2;
+	int subMaxIter = this->maxIter/5;
 
 	// scale arcLengthGrid to robot length
 	this->arcLengthGrid = this->normalizedArcLengthGrid * this->robot->GetLength();
@@ -128,8 +129,15 @@ bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 		//this->computeBCJacobian(solution);
 		this->updateBC(errorBC);
 
-		if(i == halfMaxIter)
-			this->stepSize *= 0.05;
+		//if(i == halfMaxIter)
+		//	this->stepSize *= 0.05;
+		
+		if(i % subMaxIter == subMaxIter-1)
+		{
+			this->boundaryConditionTip = Eigen::VectorXd::Random(this->robot->GetNumOfTubes(),1) * M_PI;
+			cout << "random initial generated. [" << this->boundaryConditionTip.transpose() << "]" << endl;
+			this->stepSize = 0.01;
+		}
 		
 	}
 
@@ -524,14 +532,14 @@ void MechanicsBasedKinematics::checkJacobianCondition()
 	double minSingularValue = svd.singularValues()(this->jacobianBC.cols() - 1);
 	double conditionNumber = maxSingularValue / minSingularValue;
 
-	double conditionThreshold = 100;
+	double conditionThreshold = 10;
 	if(conditionNumber > conditionThreshold)
 	{
 		//double epsilon = conditionThreshold * minSingularValue - maxSingularValue;
 		//epsilon /= 1 - conditionThreshold;
 		//this->jacobianBC += epsilon * svd.matrixU() * svd.matrixV().transpose();
 		for(int i = 0 ; i < this->jacobianBC.rows() ; ++i)
-			this->jacobianBC(i,i) += 1;
+			this->jacobianBC(i,i) += 0.1*maxSingularValue;
 		//this->jacobianBC += epsilon * svd.matrixU() * svd.matrixV().transpose();
 
 		//

@@ -16,7 +16,7 @@ void RecordTrainingSample(MechanicsBasedKinematics* kinematics, double* configur
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	double* dum = new double;
+ 	double* dum = new double;
 	CTR* robot = CTRFactory::buildCTR("");
 	
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
@@ -121,14 +121,14 @@ void RecordTrainingSample(MechanicsBasedKinematics* kinematics ,double* configur
 	configurationRec[1] = rotation[2];
 	configurationRec[2] = translation[2];
 
-	for (int i = 0; i < 3; ++i)
-		os << configurationRec[i] << "\t";
+	//for (int i = 0; i < 3; ++i)
+	//	os << configurationRec[i] << "\t";
 
-	for (int i = 0; i < 3; ++i)
-		os << tipPosition[i] << "\t";
+	//for (int i = 0; i < 3; ++i)
+	//	os << tipPosition[i] << "\t";
 
-	for (int i = 0; i < 3; ++i)
-		os << tipTangent[i] << "\t";
+	//for (int i = 0; i < 3; ++i)
+	//	os << tipTangent[i] << "\t";
 
 	os << ::std::endl;
 }
