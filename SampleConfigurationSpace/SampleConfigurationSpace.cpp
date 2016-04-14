@@ -10,13 +10,68 @@
 #include "MechanicsBasedKinematics.h"
 #include "CTRFactory.h"
 
+void GenerateTrainingData();
+void GenerateRandomConfigurations(int num = 100);
 
 void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& configurations);
-void RecordTrainingSample(MechanicsBasedKinematics* kinematics, double* configuration, ::std::ofstream& os);
+void RecordTrainingSample(MechanicsBasedKinematics* kinematics, CTR* robot, double* configuration, ::std::ofstream& os);
+
 
 int _tmain(int argc, _TCHAR* argv[])
 {
- 	double* dum = new double;
+	//GenerateTrainingData();
+	GenerateRandomConfigurations();
+	return 0;
+}
+
+
+void GenerateRandomConfigurations(int num)
+{
+	CTR* robot = CTRFactory::buildCTR("");
+
+	double epsilon = 0.001;
+	double collarLength = robot->GetTubes()[0].GetCollarLength();
+	double translationLowerLimit = robot->GetLowerTubeJointLimits()[2] + epsilon;
+	double translationUpperLimit = robot->GetUpperTubeJointLimits()[2] - epsilon;
+	double translationRange = (translationUpperLimit - translationLowerLimit);
+
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
+	kinematics->ActivateIVPJacobian();
+
+	::std::string filename = GetDateString() + "_random.txt";
+	::std::ofstream os(filename.c_str());
+
+	clock_t startTime = clock(); //Start timer
+
+	for (int i = 0; i < num; ++i)
+	{
+		Eigen::VectorXd randVec = Eigen::VectorXd::Random(3, 1);
+		randVec[2] += 1.0;
+		randVec[2] *= 0.5;
+
+		randVec[0] *= M_PI;
+		randVec[1] *= M_PI;
+		randVec[2] *= translationRange;
+
+		//::std::cout << randVec.transpose() << ::std::endl;
+		double configuration[6] = {0, randVec[0], randVec[1], 0, -collarLength, randVec[2] + translationLowerLimit};
+		RecordTrainingSample(kinematics, robot, configuration, os);
+	}
+
+	clock_t endTime = clock(); 
+
+	clock_t timePassed =  endTime - startTime;
+	double secondsPassed = timePassed / (double) CLOCKS_PER_SEC;
+
+	::std::cout << "time passed = " << secondsPassed << " [sec]" << ::std::endl;
+	
+	os.close();
+
+}
+
+
+void GenerateTrainingData()
+{
 	CTR* robot = CTRFactory::buildCTR("");
 	
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
@@ -27,7 +82,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	clock_t startTime = clock(); //Start timer
 
-	int numOfPointPerDim = 201;
+	int numOfPointPerDim = 51;
 	::std::vector<double* > configurations;
 	GenerateSamples(robot, numOfPointPerDim, configurations);
 
@@ -36,7 +91,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	int counter = 0;
 	for(::std::vector<double*>::iterator it = configurations.begin(); it != configurations.end(); ++it)
 	{
-		RecordTrainingSample(kinematics, *it, os);
+		RecordTrainingSample(kinematics, robot, *it, os);
 		if (counter % 80000)
 			::std::cout << static_cast<double> (counter)/configurations.size();
 	}
@@ -50,13 +105,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	
 	os.close();
 
-	return 0;
 }
+
 
 void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& configurations)
 {
 	double stepRotation = 2 * M_PI/(numOfPointsPerDim - 1);
-
+	
 	double epsilon = 0.0001;
 	double collarLength = robot->GetTubes()[0].GetCollarLength();
 	double translationLowerLimit = robot->GetLowerTubeJointLimits()[2] + epsilon;
@@ -88,7 +143,7 @@ void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& 
 	}
 }
 
-void RecordTrainingSample(MechanicsBasedKinematics* kinematics ,double* configuration, ::std::ofstream& os)
+void RecordTrainingSample(MechanicsBasedKinematics* kinematics ,CTR* robot, double* configuration, ::std::ofstream& os)
 {
 	static int failedBVP = 0;
 	static int counter = 0;
@@ -97,6 +152,8 @@ void RecordTrainingSample(MechanicsBasedKinematics* kinematics ,double* configur
 	double translation[3] = {0};
 	memcpy(rotation, configuration, sizeof(double) * 3);
 	memcpy(translation, &configuration[3], sizeof(double) * 3);
+
+	double translationOffset = robot->GetLowerTubeJointLimits()[2];
 
 	counter++;
 	if(!kinematics->ComputeKinematics(rotation, translation))
@@ -121,15 +178,20 @@ void RecordTrainingSample(MechanicsBasedKinematics* kinematics ,double* configur
 	configurationRec[1] = rotation[2];
 	configurationRec[2] = translation[2];
 
-	//for (int i = 0; i < 3; ++i)
-	//	os << configurationRec[i] << "\t";
+	for (int i = 0; i < 3; ++i)
+	{
+		if (i == 2)
+			configurationRec[i] -= translationOffset;
+		os << configurationRec[i] << "\t";
+	}
 
-	//for (int i = 0; i < 3; ++i)
-	//	os << tipPosition[i] << "\t";
+	for (int i = 0; i < 3; ++i)
+		os << tipPosition[i] << "\t";
 
-	//for (int i = 0; i < 3; ++i)
-	//	os << tipTangent[i] << "\t";
-
+	for (int i = 0; i < 3; ++i)
+		os << tipTangent[i] << "\t";
+	
 	os << ::std::endl;
 }
+
 
