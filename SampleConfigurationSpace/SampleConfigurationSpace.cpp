@@ -37,7 +37,7 @@ void GenerateRandomConfigurations(int num)
 
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
 	kinematics->ActivateIVPJacobian();
-
+	
 	::std::string filename = GetDateString() + "_random.txt";
 	::std::ofstream os(filename.c_str());
 
@@ -152,7 +152,8 @@ void RecordTrainingSample(MechanicsBasedKinematics* kinematics ,CTR* robot, doub
 	double translation[3] = {0};
 	memcpy(rotation, configuration, sizeof(double) * 3);
 	memcpy(translation, &configuration[3], sizeof(double) * 3);
-
+	
+	double sBP = robot->GetTubes()[0].GetTubeLength(); // arclength corresponding to balanced pair
 	double translationOffset = robot->GetLowerTubeJointLimits()[2];
 
 	counter++;
