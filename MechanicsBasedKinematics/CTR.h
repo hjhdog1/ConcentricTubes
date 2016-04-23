@@ -43,13 +43,15 @@ public:
 		//void GetTranslation (const double* tran) const {tran = this->tubeTranslation;};
 		double* GetRotation() const {return this->tubeRotation;};
 		double* GetTranslation() const {return this->tubeTranslation;};
-        std::vector<Tube>& GetTubes ();
+        //std::vector<Tube>& GetTubes ();
+		const std::vector<Tube>& GetTubes() const;
+
 		const std::vector<double*>& GetFreeParameters() const {return this->freeParameters;};
 		const std::vector<double>& GetFreeParameterVariances() const {return this->variances;};
 
 		void GetExistingTubes(const double s, std::vector<bool>& tubeIDs) const;
 
-		const double* const& GetLowerTubeJointLimits() {return this->lowerTubeTranslationLimit;};
-		const double* const& GetUpperTubeJointLimits() {return this->upperTubeTranslationLimit;};
+		const double* const& GetLowerTubeJointLimits() const {return this->lowerTubeTranslationLimit;};
+		const double* const& GetUpperTubeJointLimits() const {return this->upperTubeTranslationLimit;};
 
 };

@@ -115,7 +115,7 @@ bool CTR::ComputePrecurvature (double s, int tubeID, const double* precurvature[
 	return false;
 }
 
-std::vector<Tube>& CTR::GetTubes ()
+const std::vector<Tube>& CTR::GetTubes () const
 {
     return this->tubes;
 }

@@ -11,7 +11,7 @@ class MechanicsBasedKinematics
 	Eigen::VectorXd arcLengthGrid, normalizedArcLengthGrid;
 	Eigen::MatrixXd BVPSolutionGrid, perturbedSolGrid;
 	Eigen::MatrixXd jacobianBC;
-	//SE3 baseFrameTransformation;
+	
 	std::vector<SE3> bishopFrames, perturbedBishopFrames;
 	Eigen::VectorXd boundaryConditionTip;
 	int maxIter;
@@ -30,8 +30,8 @@ public:
 
 	void printSolution(string filename = "../solution.txt") const;
 	void printBishopFrame(string filename = "../frame.txt") const;
-
 	void ActivateIVPJacobian() {this->isUsingIVPJacobian = true;};
+	static void RelativeToAbsolute(const CTR* const robot, const double* const& relativeConf, double* const &rotation, double* const &translation);
 
 private:
 	bool updateConfiguration (double* rotation, double* translation);
@@ -45,6 +45,6 @@ private:
 	void GetBishopFrame(double s, SE3& bishopFrame, std::vector<SE3>& frames);
 	void ComputeBCJacobianNumerical(Eigen::MatrixXd& solution);
 	void ComputeBCAtBase(const Eigen::VectorXd& solutionAtBase, const double* tubeTranslation, Eigen::VectorXd& estimatedBC);
-	void Initialization(int numOfGridPoints);
+	void Initialize(int numOfGridPoints);
 	void checkJacobianCondition();
 };

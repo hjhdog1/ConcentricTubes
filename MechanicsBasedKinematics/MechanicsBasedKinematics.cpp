@@ -4,10 +4,13 @@
 #define CTR_EPSILON 0.0001
 
 MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints)
-	: maxIter(10000), stepSize(1.0), isUsingIVPJacobian(false)
+	: maxIter(100), stepSize(1.0), isUsingIVPJacobian(false)
 {
 	this->robot = _robot;
-	Initialization(numOfGridPoints);
+
+	this->Initialize(numOfGridPoints);
+
+	this->ActivateIVPJacobian();
 }
 
 MechanicsBasedKinematics::~MechanicsBasedKinematics()
@@ -56,8 +59,6 @@ bool MechanicsBasedKinematics::GetControlJacobian(double s, Eigen::MatrixXd& con
 	if(controlJacobian.cols() != 2*numTubes || controlJacobian.rows() != 6)
 		controlJacobian.resize(6,2*numTubes);
 	
-	//double* rotation, * translation;
-	//this->robot->GetConfiguration(rotation, translation);
 	double* rotation = this->robot->GetRotation();
 	double* translation = this->robot->GetTranslation();
 
@@ -126,16 +127,12 @@ bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 		if(this->hasBVPConverged(solution, errorBC))
 			return true;
 		
-		//this->computeBCJacobian(solution);
 		this->updateBC(errorBC);
 
-		//if(i == halfMaxIter)
-		//	this->stepSize *= 0.05;
-		
 		if(i % subMaxIter == subMaxIter-1)
 		{
 			this->boundaryConditionTip = Eigen::VectorXd::Random(this->robot->GetNumOfTubes(),1) * M_PI;
-			cout << "random initial generated. [" << this->boundaryConditionTip.transpose() << "]" << endl;
+			//cout << "random initial generated. [" << this->boundaryConditionTip.transpose() << "]" << endl;
 			this->stepSize = 0.01;
 		}
 		
@@ -155,7 +152,6 @@ void MechanicsBasedKinematics::solveIVP(Eigen::MatrixXd& solution, const Eigen::
 
 	//std::cout << "solution at Tip = " << solution.col(numGridPoints-1).transpose() << std::endl;
 	//std::cout << "boundaryConditions = " << boundaryConditions.transpose() << std::endl;
-
 	
 	::std::vector<double> stiffness(numTubes);
 	::std::vector<double> poissonsRatio(numTubes);
@@ -496,7 +492,7 @@ void MechanicsBasedKinematics::ComputeBCAtBase(const Eigen::VectorXd& solutionAt
 
 }
 
-void MechanicsBasedKinematics::Initialization(int numOfGridPoints)
+void MechanicsBasedKinematics::Initialize(int numOfGridPoints)
 {
 	int numTubes = this->robot->GetNumOfTubes();
 
@@ -553,5 +549,23 @@ void MechanicsBasedKinematics::checkJacobianCondition()
 
 	}
 
+
+}
+
+// This is not really general for any robot. It assumes a 3-tube robot whose first two tubes form a balanced pair
+void MechanicsBasedKinematics::RelativeToAbsolute(const CTR* const robot, const double* const& relativeConf, double* const &rotation, double* const &translation)
+{
+	int numOfTubes = robot->GetNumOfTubes();
+	double collarLength = robot->GetTubes().front().GetCollarLength();
+	double translationLowerLimit = robot->GetLowerTubeJointLimits()[numOfTubes - 1];
+
+	//rotation[0] = relativeConf[3];
+	//translation[0] = relativeConf[4];
+
+	rotation[1] = relativeConf[0];
+	rotation[2] = relativeConf[1];
+	
+	translation[1] = -collarLength;
+	translation[2] = relativeConf[2] + translationLowerLimit;
 
 }

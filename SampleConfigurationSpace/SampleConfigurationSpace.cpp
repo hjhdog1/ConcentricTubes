@@ -7,6 +7,7 @@
 
 #include "LieGroup.h"
 #include "Utilities.h"
+#include "HTransform.h"
 #include "MechanicsBasedKinematics.h"
 #include "CTRFactory.h"
 
@@ -15,13 +16,83 @@ void GenerateRandomConfigurations(int num = 100);
 
 void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& configurations);
 void RecordTrainingSample(MechanicsBasedKinematics* kinematics, CTR* robot, double* configuration, ::std::ofstream& os);
-
+void TestJointAnglesConversion();
+void ExampleCameraRotationComputation();
 
 int _tmain(int argc, _TCHAR* argv[])
 {
 	//GenerateTrainingData();
-	GenerateRandomConfigurations();
+	//GenerateRandomConfigurations();
+	//TestJointAnglesConversion();
+	ExampleCameraRotationComputation();
+
 	return 0;
+}
+
+
+void ExampleCameraRotationComputation()
+{
+	// You need a robot pointer (the parameters are updated to match the robot to be used for Benoit's surgery on May 5th 2016.
+	CTR* robot = CTRFactory::buildCTR("");
+
+	// You also need a pointer to the kinematics class
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100); // the integration grid consists of 100 points (increase if you have convergence problems)
+
+	// Receive joint values from network...
+	// a : relative tube rotation [rad]
+	// d : relative tube translation [mm]
+	// configuration[0] = a21 = theta2 - theta1
+	// configuration[1] = a21 = theta3 - theta1
+	// configuration[2] = d31 = d3 - d1
+	// configuration[3/4] = rigid body rotation/translation
+	double configuration[5] = {M_PI,  M_PI, 35, 0*M_PI, 30};
+
+	// Convert the received the configuration to comply with the definition of the mechanics based kinematics implementation
+	double rotation[3] = {0};
+	double translation[3] = {0};
+	MechanicsBasedKinematics::RelativeToAbsolute(robot, configuration, rotation, translation);
+
+	// Solve kinematic solver
+	kinematics->ComputeKinematics(rotation, translation);
+	
+	// Get the transformation defining the tip's pose (CAREFUL!! You still need to compensate for the rigid body motion of the robot)
+	// (if you want you can query many points on the robot using the overloaded function. In this case you can visualize the shape next to the camera view)
+	SE3 HTip;
+	kinematics->GetBishopFrame(HTip);
+
+	// Define transformation to be used for rigid body motion
+	SE3 HRigidBody = RotZ(configuration[3]);
+	Vec3 PBase = Vec3(0, 0, configuration[4]);
+	HRigidBody.SetPosition(PBase);
+
+	// Apply transformation
+	HTip = HRigidBody * HTip;
+
+	// Print out translation for testing
+	for (int i = 0; i < 3; ++i)
+		::std::cout << HTip.GetPosition()[i] << " ";
+	::std::cout << ::std::endl;
+}
+
+
+void TestJointAnglesConversion()
+{
+	CTR* robot = CTRFactory::buildCTR("");
+
+	double configuration[3] = {M_PI, M_PI, 20};
+
+	double rotation[3] = {0}; double translation[3] = {0};
+	
+	MechanicsBasedKinematics::RelativeToAbsolute(robot, configuration, rotation, translation);
+
+	::std::cout << "Relative Configuration:" ;
+	PrintCArray(configuration, 3);
+	::std::cout << ::std::endl;
+
+	::std::cout << "Conversion to Absolute" << ::std::endl;
+	PrintCArray(rotation, 3);
+	PrintCArray(translation, 3);
+
 }
 
 
@@ -36,7 +107,7 @@ void GenerateRandomConfigurations(int num)
 	double translationRange = (translationUpperLimit - translationLowerLimit);
 
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
-	kinematics->ActivateIVPJacobian();
+	//kinematics->ActivateIVPJacobian();
 	
 	::std::string filename = GetDateString() + "_random.txt";
 	::std::ofstream os(filename.c_str());
