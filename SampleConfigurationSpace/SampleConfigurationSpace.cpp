@@ -24,8 +24,27 @@ int _tmain(int argc, _TCHAR* argv[])
 	//GenerateTrainingData();
 	//GenerateRandomConfigurations();
 	//TestJointAnglesConversion();
-	ExampleCameraRotationComputation();
+	//ExampleCameraRotationComputation();
+	CTR* robot = CTRFactory::buildCTR("");
 
+	// You also need a pointer to the kinematics class
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
+	double configuration[5] = {1.11022e-015,	1.11022e-015,	86.3937, 0, 0};
+	double rotation[3] = {0}; 
+	double translation[3] = {0};
+	MechanicsBasedKinematics::RelativeToAbsolute(robot, configuration, rotation, translation);
+
+	PrintCArray(rotation, 3);
+	PrintCArray(translation, 3);
+	
+	kinematics->ComputeKinematics(rotation, translation);
+	SE3 tip;
+	kinematics->GetBishopFrame(tip);
+	Vec3 tipPos = tip.GetPosition();
+
+	for (int i = 0; i < 3;  ++i)
+		::std::cout << tipPos[i] << " ";
+	::std::cout << ::std::endl;
 	return 0;
 }
 
