@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include "CTRFactory.h"
 #include "MechanicsBasedKinematics.h"
@@ -13,6 +14,7 @@ void testUKF();
 void testFreeParameters();
 void testCTR();
 void testKinematics();
+void testSCurve();
 void testKinematicsSingleConfiguration();
 
 int main()
@@ -21,10 +23,11 @@ int main()
 	//testKinematics();
 	//testFreeParameters();
 
-	testUKF();
+	//testUKF();
 
 	//testSimulator();
 	
+	testSCurve();
 	
 	
 	std::cout << "Finished. Press enter to close." << std::endl;
@@ -179,6 +182,50 @@ void testKinematics()
 	_sleep(10000);
 }
 
+void testSCurve()
+{
+	CTR* const robot = CTRFactory::buildCTR("");
+
+	MechanicsBasedKinematics kinematics(robot,100);
+	kinematics.ActivateIVPJacobian();
+
+	double rotation[3] = {0,0,0};
+	double translation[3] = {0,-17,-34-86.3938};
+
+	int scurveRes = 51;
+	Eigen::MatrixXd scurve(2,scurveRes);
+	for(int i = 0; i < scurveRes; ++i)
+	{
+		rotation[2] = 2*M_PI*(double)i/(double)(scurveRes-1);
+
+		if(!kinematics.ComputeKinematics(rotation, translation))
+		{
+			std::cout << "rot. = " << rotation[0] << ", " << rotation[1] << ", " << rotation[2] << ", \t \t";
+			std::cout << "trans. = " << translation[0] << ", " << translation[1] << ", " << translation[2] << std::endl;
+
+			std::cout << "FAILED!!" << std::endl;
+		}
+
+		scurve(0, i) = rotation[2];
+		scurve(1, i) = kinematics.GetInnerTubeRotation();
+
+	}
+
+	std::ofstream stm("scurve.txt");;
+	for(int i = 0; i < scurve.rows(); ++i)
+		for(int j = 0; j < scurve.cols(); ++j)
+		{
+			stm << scurve(i,j);
+			if (j == scurve.cols()-1)
+				stm << std::endl;
+			else
+				stm << "\t";
+
+		}
+
+
+	_sleep(10000);
+}
 
 void testKinematicsSingleConfiguration()
 {

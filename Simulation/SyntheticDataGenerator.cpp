@@ -1,8 +1,9 @@
 #include "SyntheticDataGenerator.h"
 #include <fstream>
+#include "Utilities.h"
 
-::std::vector<::std::string> ReadLinesFromFile(const ::std::string& pathToFile);
-::std::vector< double> DoubleVectorFromString(const ::std::string& inputString);
+//::std::vector<::std::string> ReadLinesFromFile(const ::std::string& pathToFile);
+//::std::vector< double> DoubleVectorFromString(const ::std::string& inputString);
 
 SyntheticDataGenerator::SyntheticDataGenerator(CTR* _robot)
 	: lineCounter(0)
@@ -115,38 +116,38 @@ void SyntheticDataGenerator::PrintTipTrajectory(std::string _tipTrajectoryFile)
 	stream.close();
 }
 
-
-::std::vector<::std::string> ReadLinesFromFile(const ::std::string& pathToFile)
-{
-	::std::vector< ::std::string> linesVector;
-
-	::std::ifstream inputFile(pathToFile.c_str());
-	
-	::std::string tempLine;
-	while(::std::getline(inputFile, tempLine))
-		linesVector.push_back(tempLine);
-
-	return linesVector;
-}
-
-
-::std::vector< double> DoubleVectorFromString(const ::std::string& inputString)
-{
-	::std::istringstream ss(inputString);
-
-	::std::vector<double> result;
-	while(!ss.eof())
-	{
-		if( ss != "" )
-		{
-			double tmp;
-			ss >> tmp;
-			result.push_back(tmp);
-		}
-	}
-
-	return result;
-}
+//
+//::std::vector<::std::string> ReadLinesFromFile(const ::std::string& pathToFile)
+//{
+//	::std::vector< ::std::string> linesVector;
+//
+//	::std::ifstream inputFile(pathToFile.c_str());
+//	
+//	::std::string tempLine;
+//	while(::std::getline(inputFile, tempLine))
+//		linesVector.push_back(tempLine);
+//
+//	return linesVector;
+//}
+//
+//
+//::std::vector< double> DoubleVectorFromString(const ::std::string& inputString)
+//{
+//	::std::istringstream ss(inputString);
+//
+//	::std::vector<double> result;
+//	while(!ss.eof())
+//	{
+//		if( ss != "" )
+//		{
+//			double tmp;
+//			ss >> tmp;
+//			result.push_back(tmp);
+//		}
+//	}
+//
+//	return result;
+//}
 
 bool SyntheticDataGenerator::LoadOneMeasurement(double* pos, double* ori, double* rotation, double* translation)
 {

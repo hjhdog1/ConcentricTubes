@@ -1,10 +1,11 @@
 ﻿#include "MechanicsBasedKinematics.h"
 #include <fstream>
+#include "../Utilities/Utilities.h"
 
 #define CTR_EPSILON 0.0001
 
 MechanicsBasedKinematics::MechanicsBasedKinematics(CTR* _robot, int numOfGridPoints)
-	: maxIter(100), stepSize(1.0), isUsingIVPJacobian(false)
+	: maxIter(10000), stepSize(1.0), isUsingIVPJacobian(false)
 {
 	this->robot = _robot;
 
@@ -21,7 +22,11 @@ MechanicsBasedKinematics::~MechanicsBasedKinematics()
 bool MechanicsBasedKinematics::ComputeKinematics(double* rotation, double* translation)
 {
 	if(!this->robot->UpdateConfiguration(rotation, translation))
+	{
+		::std::cout << "translation: ";
+		PrintCArray(translation, 3);
 		return false;
+	}
 	
 	if(!this->solveBVP(this->BVPSolutionGrid))
 		return false;
@@ -50,6 +55,28 @@ void MechanicsBasedKinematics::GetBishopFrame(std::vector<double> s, std::vector
 	for(int i = 0; i < sizeS; ++i)
 		this->GetBishopFrame(s[i], bishopFrame[i]);
 }
+
+double MechanicsBasedKinematics::GetInnerTubeRotation(double s)
+{
+	int numTube = robot->GetNumOfTubes();
+	
+	int beginIdx;
+	double frac;
+	this->findNearestGridPoint(s, &beginIdx, &frac);
+
+	double rotation0 = this->BVPSolutionGrid(numTube-1, beginIdx);
+	double rotation1 = this->BVPSolutionGrid(numTube-1, beginIdx+1);
+
+	return frac*rotation1 + (1-frac)*rotation0;
+}
+
+double MechanicsBasedKinematics::GetInnerTubeRotation()
+{
+	return this->BVPSolutionGrid(robot->GetNumOfTubes()-1, this->BVPSolutionGrid.cols()-1);
+}
+
+
+
 
 bool MechanicsBasedKinematics::GetControlJacobian(double s, Eigen::MatrixXd& controlJacobian)
 {
@@ -559,13 +586,13 @@ void MechanicsBasedKinematics::RelativeToAbsolute(const CTR* const robot, const 
 	double collarLength = robot->GetTubes().front().GetCollarLength();
 	double translationLowerLimit = robot->GetLowerTubeJointLimits()[numOfTubes - 1];
 
-	//rotation[0] = relativeConf[3];
-	//translation[0] = relativeConf[4];
+	rotation[0] = relativeConf[3];
+	translation[0] = relativeConf[4];
 
-	rotation[1] = relativeConf[0];
-	rotation[2] = relativeConf[1];
+	rotation[1] = relativeConf[0] + rotation[0];
+	rotation[2] = relativeConf[1] + rotation[0];
 	
-	translation[1] = -collarLength;
+	translation[1] = -collarLength + translation[0];
 	translation[2] = relativeConf[2] + translationLowerLimit;
 
 }

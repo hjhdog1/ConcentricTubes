@@ -26,6 +26,8 @@ public:
 	void GetBishopFrame(SE3& bishopFrame);
 	void GetBishopFrame(double s, SE3& bishopFrame);
 	void GetBishopFrame(std::vector<double> s, std::vector<SE3>& bishopFrame);
+	double GetInnerTubeRotation(double s);
+	double GetInnerTubeRotation();
 	bool GetControlJacobian(double s, Eigen::MatrixXd& controlJacobian);
 
 	void printSolution(string filename = "../solution.txt") const;
