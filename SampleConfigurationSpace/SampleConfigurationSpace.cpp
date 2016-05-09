@@ -18,6 +18,7 @@ void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& 
 void RecordTrainingSample(MechanicsBasedKinematics* kinematics, CTR* robot, double* configuration, ::std::ofstream& os);
 void TestJointAnglesConversion();
 void ExampleCameraRotationComputation();
+void TestInverseKinematics();
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -25,29 +26,39 @@ int _tmain(int argc, _TCHAR* argv[])
 	//GenerateRandomConfigurations();
 	//TestJointAnglesConversion();
 	//ExampleCameraRotationComputation();
-	CTR* robot = CTRFactory::buildCTR("");
-
-	// You also need a pointer to the kinematics class
-	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
-	double configuration[5] = {1.11022e-015,	1.11022e-015,	86.3937, 0, 0};
-	double rotation[3] = {0}; 
-	double translation[3] = {0};
-	MechanicsBasedKinematics::RelativeToAbsolute(robot, configuration, rotation, translation);
-
-	PrintCArray(rotation, 3);
-	PrintCArray(translation, 3);
-	
-	kinematics->ComputeKinematics(rotation, translation);
-	SE3 tip;
-	kinematics->GetBishopFrame(tip);
-	Vec3 tipPos = tip.GetPosition();
-
-	for (int i = 0; i < 3;  ++i)
-		::std::cout << tipPos[i] << " ";
-	::std::cout << ::std::endl;
-	return 0;
+	TestInverseKinematics();
 }
 
+void TestInverseKinematics()
+{
+	CTR* robot = CTRFactory::buildCTR("");
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot);
+
+	double targetWorkspace[6] = {-20.6959, 0.0647302, 178.92, 0.224, 0.00111576, 0.974559};
+	
+	double rotation[3] = {-0.04, -3.06, 0};
+	double translation[3] = {0, -17, -45};
+	//double rotation[3] = {0};
+	//double translation[3] = {0};
+
+	//kinematics->ComputeKinematics(rotation, translation);
+	//SE3 tmp;
+	//kinematics->GetBishopFrame(tmp);
+	//::std::cout << "tangent vector" << ::std::endl;
+	//PrintVec3(tmp.GetZ());
+
+	//::std::cout << "position" << ::std::endl;
+	//PrintVec3(tmp.GetPosition());
+	if(!kinematics->ComputeInveseKinematics(targetWorkspace, rotation, translation))
+		::std::cout << "computation failed" << ::std::endl;
+	
+	::std::cout << "rotation:";
+	PrintCArray(rotation, 3);
+
+	::std::cout << "translation:";
+	PrintCArray(translation, 3);
+
+}
 
 void ExampleCameraRotationComputation()
 {

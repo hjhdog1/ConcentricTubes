@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <Eigen/Dense>
+#include "LieGroup.h"
 
 //namespace utilities
 //{
@@ -139,3 +140,9 @@
 
 	void PrintCArray(const double* toPrint, size_t size, ::std::ostream& os = ::std::cout);
 //}
+
+void SO3ToEigen(const SO3& rot, ::Eigen::Matrix<double, 3, 3>& rotEigen);
+
+::Eigen::Vector3d Vec3ToEigen(const Vec3& vec3);
+
+void PrintVec3(const Vec3& vecToPrint);

@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClInclude Include="LieGroup.h" />
     <ClInclude Include="rmatrix3.h" />
+    <ClInclude Include="types.h" />
     <ClInclude Include="_array.h" />
   </ItemGroup>
   <ItemGroup>
