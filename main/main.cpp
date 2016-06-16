@@ -14,7 +14,7 @@ void testUKF();
 void testFreeParameters();
 void testCTR();
 void testKinematics();
-void testSCurve();
+//void testSCurve();
 void testKinematicsSingleConfiguration();
 
 int main()
@@ -23,11 +23,11 @@ int main()
 	//testKinematics();
 	//testFreeParameters();
 
-	//testUKF();
+	testUKF();
 
 	//testSimulator();
 	
-	testSCurve();
+	//testSCurve();
 	
 	
 	std::cout << "Finished. Press enter to close." << std::endl;
@@ -63,40 +63,68 @@ void testUKF()
 	//simulator.GenerateTipTrajectory();
 
 	SyntheticDataGenerator simulator(robot);
-	//simulator.ReadJointAndTipTrajectory("../jointTipTrajectory_measured.txt");
-	simulator.ReadJointAndTipTrajectory("../jointTipTrajectory_theoretical.txt", false);
+	simulator.ReadJointAndTipTrajectory("../jointTipTrajectory_measured.txt");
+	//simulator.ReadJointAndTipTrajectory("../jointTipTrajectory_measured_short.txt");
+	//simulator.ReadJointAndTipTrajectory("../jointTipTrajectory_measured_permuted.txt");
+	//simulator.ReadJointAndTipTrajectory("../jointTipTrajectory_theoretical.txt", false);
 
 	std::vector<double> nominalValues;
 	std::vector<double*> freeParameters = robot->GetFreeParameters();
 	for(int i = 0; i < freeParameters.size(); ++i)
 	{
 		nominalValues.push_back(*freeParameters[i]);
-		*freeParameters[i] *= 1.25;
+		*freeParameters[i] *= 1.10;
 	}
 
 	double measVar[6] = {1, 1, 1, 0.1, 0.1, 0.1};
-	double var[6] = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
 	std:vector<double> measVarSTL(measVar, measVar+6);
 	UKF ukf(robot, robot->GetFreeParameterVariances(), measVarSTL);
 	ukf.Initialize();
+
+	MechanicsBasedKinematics kin(robot);
 	
+	::std::ofstream paramOs("../parameterHistory.txt"), errorOs("../errorHistory.txt");
 
 	double pos[3], ori[9], rotation[3], translation[3];
 	while(simulator.LoadOneMeasurement(pos, ori, rotation, translation))
 	{
 		robot->UpdateConfiguration(rotation, translation);
-		ukf.StepFilter(ori, pos);
-		for(int i = 0; i < freeParameters.size(); ++i)
-			std::cout << std::fixed << std::setprecision(1) << (*freeParameters[i] - nominalValues[i])/nominalValues[i] * 100 << "%\t";
+		if(!ukf.StepFilter(ori, pos))
+			::std::cout << "StepFilter Faild!!" << ::std::endl;
+		
+		if(simulator.GetCounter() % 100 == 0)
+			::std::cout << ::std::endl << (double)(simulator.GetCounter())/(double)(simulator.GetTrajectoryLength()) * 100 << "%" << ::std::endl << ::std::endl;
 
+
+		for(int i = 0; i < freeParameters.size(); ++i)
+		{
+			std::cout << std::fixed << std::setprecision(1) << (*freeParameters[i] - nominalValues[i])/nominalValues[i] * 100 << "%\t";
+			paramOs << *freeParameters[i] << "\t";
+		}
+		paramOs << std::endl;
+
+		kin.ComputeKinematics(rotation, translation);
+		SE3 tipFrame;
+		kin.GetBishopFrame(tipFrame);
+
+		Vec3 measuredPos(pos[0], pos[1], pos[2]);
+		Vec3 posError = measuredPos - tipFrame.GetPosition();
+
+		//::std::cout << "Tip position error: " << posError[0] << ", " << posError[1] << ", " << posError[2] << ::std::endl;
+		errorOs << posError[0] << "\t" << posError[1] << "\t" << posError[2] << ::std::endl;
+		::std::cout << "Tip position error: " << posError.Normalize() << ::std::endl;
+		
 		//std::cout << std::setprecision(5) << "\t" << *freeParameters[0] << "\t" << 1 / *freeParameters[1] << "\t" << *freeParameters[2] << "\t"  << 1 / *freeParameters[3];
 		//std::cout << std::setprecision(5) << 1 / *freeParameters[0] << "\t" << *freeParameters[1] << "\t" << 1 / *freeParameters[2] << "\t" << *freeParameters[3] << "\t"  << 1 / *freeParameters[4];
 		//std::cout << std::setprecision(5) << 1 / *freeParameters[0] << "\t" << 1 / *freeParameters[1] << "\t" << 1 / *freeParameters[2];
 
-		std::cout << std::endl;
+		
 	}
 
 	//_sleep(10000);
+
+	paramOs.close();
+	errorOs.close();
 
 }
 
@@ -181,51 +209,51 @@ void testKinematics()
 
 	_sleep(10000);
 }
-
-void testSCurve()
-{
-	CTR* const robot = CTRFactory::buildCTR("");
-
-	MechanicsBasedKinematics kinematics(robot,100);
-	kinematics.ActivateIVPJacobian();
-
-	double rotation[3] = {0,0,0};
-	double translation[3] = {0,-17,-34-86.3938};
-
-	int scurveRes = 51;
-	Eigen::MatrixXd scurve(2,scurveRes);
-	for(int i = 0; i < scurveRes; ++i)
-	{
-		rotation[2] = 2*M_PI*(double)i/(double)(scurveRes-1);
-
-		if(!kinematics.ComputeKinematics(rotation, translation))
-		{
-			std::cout << "rot. = " << rotation[0] << ", " << rotation[1] << ", " << rotation[2] << ", \t \t";
-			std::cout << "trans. = " << translation[0] << ", " << translation[1] << ", " << translation[2] << std::endl;
-
-			std::cout << "FAILED!!" << std::endl;
-		}
-
-		scurve(0, i) = rotation[2];
-		scurve(1, i) = kinematics.GetInnerTubeRotation();
-
-	}
-
-	std::ofstream stm("scurve.txt");;
-	for(int i = 0; i < scurve.rows(); ++i)
-		for(int j = 0; j < scurve.cols(); ++j)
-		{
-			stm << scurve(i,j);
-			if (j == scurve.cols()-1)
-				stm << std::endl;
-			else
-				stm << "\t";
-
-		}
-
-
-	_sleep(10000);
-}
+//
+//void testSCurve()
+//{
+//	CTR* const robot = CTRFactory::buildCTR("");
+//
+//	MechanicsBasedKinematics kinematics(robot,100);
+//	kinematics.ActivateIVPJacobian();
+//
+//	double rotation[3] = {0,0,0};
+//	double translation[3] = {0,-17,-34-86.3938};
+//
+//	int scurveRes = 51;
+//	Eigen::MatrixXd scurve(2,scurveRes);
+//	for(int i = 0; i < scurveRes; ++i)
+//	{
+//		rotation[2] = 2*M_PI*(double)i/(double)(scurveRes-1);
+//
+//		if(!kinematics.ComputeKinematics(rotation, translation))
+//		{
+//			std::cout << "rot. = " << rotation[0] << ", " << rotation[1] << ", " << rotation[2] << ", \t \t";
+//			std::cout << "trans. = " << translation[0] << ", " << translation[1] << ", " << translation[2] << std::endl;
+//
+//			std::cout << "FAILED!!" << std::endl;
+//		}
+//
+//		scurve(0, i) = rotation[2];
+//		scurve(1, i) = kinematics.GetInnerTubeRotation();
+//
+//	}
+//
+//	std::ofstream stm("scurve.txt");;
+//	for(int i = 0; i < scurve.rows(); ++i)
+//		for(int j = 0; j < scurve.cols(); ++j)
+//		{
+//			stm << scurve(i,j);
+//			if (j == scurve.cols()-1)
+//				stm << std::endl;
+//			else
+//				stm << "\t";
+//
+//		}
+//
+//
+//	_sleep(10000);
+//}
 
 void testKinematicsSingleConfiguration()
 {

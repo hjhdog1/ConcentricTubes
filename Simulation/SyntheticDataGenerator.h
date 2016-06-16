@@ -24,4 +24,7 @@ public:
 	bool LoadOneMeasurement(double* pos, double* ori, double* rotation, double* translation);
 	void RewindTrajectory() {this->lineCounter = 0;};
 
+	int GetTrajectoryLength() const {return this->jointTrajectory.size();};
+	int GetCounter() const {return this->lineCounter;};
+
 };
