@@ -1,13 +1,28 @@
 #include <iostream>
+#include <vector>
 #include <fstream>
 #include <iomanip>
 #include "CTRFactory.h"
 #include "MechanicsBasedKinematics.h"
 #include "UKF.h"
 #include "SyntheticDataGenerator.h"
+#include "Utilities.h"
+#include <Eigen/Dense>
+#include <ctime>
+
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include "opencv2/imgcodecs.hpp"
+#include <opencv2/highgui.hpp>
+#include <opencv2/ml.hpp>
 
 // timer
 #include <ctime>
+
+using namespace cv;
+using namespace cv::ml;
+
+typedef ::std::vector<::std::vector<double>> DoubleVec;
 
 void testSimulator();
 void testUKF();
@@ -16,6 +31,12 @@ void testCTR();
 void testKinematics();
 //void testSCurve();
 void testKinematicsSingleConfiguration();
+void testSVMClassifier();
+void fitMechanicsBasedKinematics();
+double ComputeErrorOnDataset(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out);
+void ComputeErrorJacobian(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out,  double error_original,::Eigen::MatrixXd& jacobian);
+void preprocessData(CTR* robot,::std::vector<::std::string>& dataStr, DoubleVec& data_in, DoubleVec& data_out);
+void evaluateModel();
 
 int main()
 {
@@ -23,17 +44,258 @@ int main()
 	//testKinematics();
 	//testFreeParameters();
 
-	testUKF();
+	//testUKF();
 
 	//testSimulator();
 	
 	//testSCurve();
-	
-	
+	//testSVMClassifier();
+	//fitMechanicsBasedKinematics();
+	evaluateModel();
+
 	std::cout << "Finished. Press enter to close." << std::endl;
 	std::cin.ignore();
 	return 0;
 }
+
+
+void evaluateModel()
+{
+	// load training data
+	::std::vector< ::std::string> dataStr = ReadLinesFromFile("./2016-10-04-09-05-36_record_joint.txt");
+	::std::vector< ::std::vector< double>> data_in, data_out;
+
+	// load model with initial parameters
+	CTR* robot = CTRFactory::buildCTR("");
+	::std::vector<double*> parameters = robot->GetFreeParameters();
+
+	double calibratedParameters[5] = {0.00358469, 0.998491, 0.00355983, 0.274077, 0.0180651};
+	for(int i = 0; i < 5; ++i)
+		*parameters[i] = calibratedParameters[i];
+
+
+	preprocessData(robot, dataStr, data_in, data_out);
+
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot,100);
+	kinematics->ActivateIVPJacobian();
+	
+	double mean_error = ComputeErrorOnDataset(robot, kinematics, data_in, data_out);
+	::std::cout << mean_error << ::std::endl;
+
+}
+
+void fitMechanicsBasedKinematics()
+{
+	::std::ofstream os("parameters.txt");
+	// load training data
+	::std::vector< ::std::string> dataStr = ReadLinesFromFile("./2016-10-03-16-12-39_record_joint.txt");
+	//::std::vector< ::std::string> dataStr = ReadLinesFromFile("./test_fitting.txt");
+	::std::vector< ::std::vector< double>> data_in, data_out;
+
+	// load model with initial parameters
+	CTR* robot = CTRFactory::buildCTR("");
+	::std::vector<double*> parameters = robot->GetFreeParameters();
+	::Eigen::VectorXd params(5);
+	for(int i = 0; i < 5; ++i)
+		params(i) = *parameters[i];
+
+	//::std::cout << params << ::std::endl;
+
+	preprocessData(robot, dataStr, data_in, data_out);
+
+	//::std::cout << data_in.size() << " " << data_out.size() << ::std::endl;
+	//PrintCArray(data_in[0].data(), 6);
+
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot,100);
+	kinematics->ActivateIVPJacobian();
+
+	//double mean_error = 1000000.0;
+	double error_prev = 0.0;
+
+	double tolerance = 0.00001;
+	int max_iterations = 1000;
+
+	int iter = 0;
+	::Eigen::MatrixXd error_jacobian(5,1);
+	
+	double step = 0.00001;
+	
+	double mean_error = ComputeErrorOnDataset(robot, kinematics, data_in, data_out);
+	::std::cout << mean_error << ::std::endl;
+
+	double scale_factor = 100;
+	// loop until convergence
+	clock_t start = clock();
+	while ( ::std::abs(mean_error - error_prev) > tolerance && iter < max_iterations)
+	{
+		
+		error_prev = mean_error;
+
+		// compute error jacobian with respect to parameters		
+		ComputeErrorJacobian(params, robot, kinematics, data_in, data_out, mean_error, error_jacobian);
+
+		// update parameters
+		for(int i = 0; i < 5; i+=2)
+			error_jacobian(i)/= scale_factor * scale_factor;
+		params -= step * error_jacobian;
+		
+		// update robot based on updated parameters
+		for(int i = 0 ; i < parameters.size() ; i++)
+			*parameters[i] = params(i);
+
+		// update error
+		mean_error = ComputeErrorOnDataset(robot, kinematics, data_in, data_out);
+
+
+		if (mean_error > error_prev)
+			step *= 0.90;
+
+		clock_t end  = clock();
+		double duration = (end - start)/(double) CLOCKS_PER_SEC/(double) ++iter;
+
+		if (iter % 10 == 0)
+			::std::cout << "iter:" << iter << "  " << "mean_error:" <<  mean_error << "   step:" << step <<  "   Estimated Time left:" << (max_iterations - iter) * duration/60.0 << ::std::endl; 
+
+		if (iter % 50 == 0)
+		{
+			::std::cout << "intermediate parameter values:" << params.transpose() << ::std::endl;
+			os << params.transpose() << "   " << mean_error << ::std::endl;
+		}
+		
+	}
+	os.close();
+	::std::cout << "Calibrated model parameters:" << params.transpose() << ::std::endl; 
+}
+
+void preprocessData(CTR* robot,::std::vector<::std::string>& dataStr, DoubleVec& data_in, DoubleVec& data_out)
+{
+	double relative_configuration[5] = {0};
+	double rotation[3] = {0};
+	double translation[3] = {0};
+
+	::std::vector<::std::string>::iterator it = dataStr.begin();
+	::std::vector<double> tmp;
+	::std::vector<double> tmpAbsConf(6);
+	::std::vector<double> tmpPosition(3);
+	for(it; it < dataStr.end(); ++it)
+	{
+		tmp = DoubleVectorFromString(*it);
+		memcpy(relative_configuration, &tmp.data()[6], sizeof(double) * 5);
+
+		MechanicsBasedKinematics::RelativeToAbsolute(robot, relative_configuration, rotation, translation);
+
+		memcpy(tmpAbsConf.data(), rotation, sizeof(double) * 3);
+		memcpy(&tmpAbsConf.data()[3], translation, sizeof(double) * 3);
+		memcpy(tmpPosition.data(), &tmp.data()[0], sizeof(double) * 3);
+
+		data_in.push_back(tmpAbsConf);
+		data_out.push_back(tmpPosition);
+	}
+}
+
+double ComputeErrorOnDataset(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out)
+{
+	double rotation[3] = {0};
+	double translation[3] = {0};
+
+	::Eigen::Vector3d position;
+	::Eigen::Vector3d actual_position;
+
+	double error = 0;
+	::Eigen::Vector3d instant_error;
+
+	for (int i = 0; i < data_in.size(); ++i)
+	{
+		memcpy(rotation, data_in[i].data(), sizeof(double) * 3);
+		memcpy(translation, &data_in[i].data()[3], sizeof(double) * 3);
+		
+		kinematics->ComputeKinematics(rotation, translation);
+		kinematics->GetTipPosition(position);
+
+		actual_position = ::Eigen::Map<::Eigen::Vector3d> (data_out[i].data(), 3);	
+
+		instant_error = actual_position - position;
+
+		error += instant_error.norm();
+	}
+
+	error /= data_in.size();
+
+	return error;
+}
+
+void ComputeErrorJacobian(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out, double error_original, ::Eigen::MatrixXd& jacobian)
+{
+	::Eigen::VectorXd params_original(params);
+
+	double epsilon = 0.000001;
+	double invEpsilon = 1.0/epsilon;
+	double error_perturbed = 0;
+	
+	for(int i = 0; i < params.size(); ++i)
+	{
+		params[i] += epsilon;
+		*(robot->GetFreeParameters()[i]) = params[i];
+		error_perturbed = ComputeErrorOnDataset(robot, kinematics, data_in, data_out);
+		jacobian(i) = (error_perturbed - error_original) * invEpsilon;
+		params[i] = params_original[i];
+		*(robot->GetFreeParameters()[i]) = params[i];
+	}
+
+}
+
+
+void testSVMClassifier()
+{
+
+    // Data for visual representation
+    int width = 512, height = 512;
+    Mat image = Mat::zeros(height, width, CV_8UC3);
+    // Set up training data
+    int labels[4] = {1, -1, -1, -1};
+    float trainingData[4][2] = { {501, 10}, {255, 10}, {501, 255}, {10, 501} };
+    Mat trainingDataMat(4, 2, CV_32FC1, trainingData);
+    Mat labelsMat(4, 1, CV_32SC1, labels);
+    // Train the SVM
+    Ptr<SVM> svm = SVM::create();
+    svm->setType(SVM::C_SVC);
+    svm->setKernel(SVM::LINEAR);
+    svm->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 100, 1e-6));
+    svm->train(trainingDataMat, ROW_SAMPLE, labelsMat);
+    // Show the decision regions given by the SVM
+    Vec3b green(0,255,0), blue (255,0,0);
+    for (int i = 0; i < image.rows; ++i)
+        for (int j = 0; j < image.cols; ++j)
+        {
+            Mat sampleMat = (Mat_<float>(1,2) << j,i);
+            float response = svm->predict(sampleMat);
+            if (response == 1)
+                image.at<Vec3b>(i,j)  = green;
+            else if (response == -1)
+                image.at<Vec3b>(i,j)  = blue;
+        }
+    // Show the training data
+    int thickness = -1;
+    int lineType = 8;
+    circle( image, Point(501,  10), 5, Scalar(  0,   0,   0), thickness, lineType );
+    circle( image, Point(255,  10), 5, Scalar(255, 255, 255), thickness, lineType );
+    circle( image, Point(501, 255), 5, Scalar(255, 255, 255), thickness, lineType );
+    circle( image, Point( 10, 501), 5, Scalar(255, 255, 255), thickness, lineType );
+    // Show support vectors
+    thickness = 2;
+    lineType  = 8;
+    Mat sv = svm->getUncompressedSupportVectors();
+    for (int i = 0; i < sv.rows; ++i)
+    {
+        const float* v = sv.ptr<float>(i);
+        circle( image,  Point( (int) v[0], (int) v[1]),   6,  Scalar(128, 128, 128), thickness, lineType);
+    }
+    imwrite("result.png", image);        // save the image
+    imshow("SVM Simple Example", image); // show it to the user
+    waitKey(0);
+
+}
+
 
 void testSimulator()
 {
