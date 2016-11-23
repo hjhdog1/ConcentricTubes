@@ -70,7 +70,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../Lib;../LieGroup;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Lib;../LieGroup;../lwpr-1.2.6/include;../Utilities</AdditionalIncludeDirectories>
       <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
@@ -94,7 +94,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>../Lib;../LieGroup;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Lib;../LieGroup;../lwpr-1.2.6/include;../Utilities</AdditionalIncludeDirectories>
       <OpenMPSupport>false</OpenMPSupport>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -111,7 +111,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>../Lib;../LieGroup;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Lib;../LieGroup;../lwpr-1.2.6/include;../Utilities</AdditionalIncludeDirectories>
       <OpenMPSupport>false</OpenMPSupport>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -125,6 +125,7 @@
   <ItemGroup>
     <ClCompile Include="CTR.cpp" />
     <ClCompile Include="CTRFactory.cpp" />
+    <ClCompile Include="LWPRKinematics.cpp" />
     <ClCompile Include="MechanicsBasedKinematics.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
@@ -136,6 +137,7 @@
   <ItemGroup>
     <ClInclude Include="CTR.h" />
     <ClInclude Include="CTRFactory.h" />
+    <ClInclude Include="LWPRKinematics.h" />
     <ClInclude Include="MechanicsBasedKinematics.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>

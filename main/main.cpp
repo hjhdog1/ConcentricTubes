@@ -4,23 +4,24 @@
 #include <iomanip>
 #include "CTRFactory.h"
 #include "MechanicsBasedKinematics.h"
+#include "LWPRKinematics.h"
 #include "UKF.h"
 #include "SyntheticDataGenerator.h"
 #include "Utilities.h"
 #include <Eigen/Dense>
 #include <ctime>
 
-#include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include "opencv2/imgcodecs.hpp"
-#include <opencv2/highgui.hpp>
-#include <opencv2/ml.hpp>
-
+//#include <opencv2/core.hpp>
+//#include <opencv2/imgproc.hpp>
+//#include "opencv2/imgcodecs.hpp"
+//#include <opencv2/highgui.hpp>
+//#include <opencv2/ml.hpp>
+#define pi M_PI
 // timer
 #include <ctime>
 
-using namespace cv;
-using namespace cv::ml;
+//using namespace cv;
+//using namespace cv::ml;
 
 typedef ::std::vector<::std::vector<double>> DoubleVec;
 
@@ -38,27 +39,377 @@ void ComputeErrorJacobian(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedK
 void preprocessData(CTR* robot,::std::vector<::std::string>& dataStr, DoubleVec& data_in, DoubleVec& data_out);
 void evaluateModel();
 
+// controller tests
+void testOptimizationController();
+void testOptimizationControllerOnData();
+void runOptimizationController(LWPRKinematics* kinematics, double initialConfiguration[], double goalInTaskSapce[6], double outputConfiguration[]);
+void checkJointLimits(::Eigen::VectorXd& configuration);
+bool computeObjectiveFunction(LWPRKinematics* kinematics, const ::Eigen::VectorXd& targetX, ::Eigen::VectorXd& x, double t, double& funVal, double& realError);
+void computeObjectiveFunctionJacobian(LWPRKinematics* kinematics, const ::Eigen::VectorXd& targetX, ::Eigen::VectorXd& x, double t, ::Eigen::MatrixXd& J);
+void solveFirstObjective(LWPRKinematics* kinematics, const ::Eigen::VectorXd& targetX, ::Eigen::VectorXd& x, double t, double eps, double mu);
+void unscaleVector(::Eigen::VectorXd& x, double scalingFactors[]);
+void unscaleVector(double x[], int x_size, double scalingFactors[]);
+void scaleVector(::Eigen::VectorXd& x, double scalingFactors[]);
+void scaleVector(double x[], int x_size, double scalingFactors[]);
+
 int main()
 {
-	//testKinematicsSingleConfiguration();
-	//testKinematics();
-	//testFreeParameters();
-
-	//testUKF();
-
-	//testSimulator();
-	
-	//testSCurve();
-	//testSVMClassifier();
+	testOptimizationController();
+	//testOptimizationControllerOnData();
 	//fitMechanicsBasedKinematics();
-	evaluateModel();
-
 	std::cout << "Finished. Press enter to close." << std::endl;
 	std::cin.ignore();
+
 	return 0;
 }
 
 
+void testOptimizationControllerOnData()
+{
+	// Initialize robot and kinematics solver
+	//::std::string pathToModel("models/lwpr_forward_2016_4_28_14_32_16_D80.bin");	
+	::std::string pathToModel("models/lwpr_forward_2016_11_17_16_14_55.bin");	
+	LWPRKinematics* kinematics = new LWPRKinematics(pathToModel);
+
+	//read data
+	//::std::vector<::std::string> dataStr = ReadLinesFromFile("./testControl.txt");
+	::std::vector<::std::string> dataStr = ReadLinesFromFile("./debug_control2.txt");
+	::std::vector<double> dataVec;
+	double configuration[5] = {0};
+	double taskGoal[6] = {0};
+	double outputConfiguration[5] = {0};
+
+	// Initial robot configuration
+	double initialConfiguration[5] = {pi, pi, 15, 0, 0};
+	double posOrt[6] = {0};
+
+	double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
+
+	double maxPositionError = 0;
+	double currentPositionError = 0;
+
+	::std::ofstream os("results.txt");
+	for (::std::vector<::std::string>::iterator it = dataStr.begin(); it != dataStr.end(); ++it)
+	{
+		dataVec.clear();
+		dataVec = DoubleVectorFromString(*it);
+		memcpy(configuration, &dataVec.data()[6], 5 * sizeof(double));	
+		memcpy(taskGoal, dataVec.data(), 6 * sizeof(double));	
+
+		clock_t start = clock();	
+		runOptimizationController(kinematics, configuration, taskGoal, outputConfiguration);
+		clock_t end = clock();
+
+		// validate
+		::std::cout << "time required to solve kinematics: " << (double) (end - start)/CLOCKS_PER_SEC << " [sec]" << ::std::endl;
+
+		kinematics->ComputeKinematics(outputConfiguration, posOrt);
+
+		//::std::cout << "Goal Position:";
+		//PrintCArray(taskGoal, 3);
+		//::std::cout << "Actual Position:";
+		//PrintCArray(posOrt, 3);
+		//::std::cout << ::std::endl;
+		//::std::cout << "Goal Tangent:";
+		//PrintCArray(&taskGoal[3], 3);
+		//::std::cout << "Actual Tangent:";
+		//PrintCArray(&posOrt[3], 3);
+		//::std::cout << ::std::endl;
+		//::std::cout << ::std::endl;
+
+		//::Eigen::VectorXd actTang = ::Eigen::Map< ::Eigen::VectorXd> (&posOrt[3],3);
+		//::Eigen::VectorXd goalTang = ::Eigen::Map< ::Eigen::VectorXd> (&taskGoal[3],3);
+
+		::Eigen::VectorXd actPos = ::Eigen::Map< ::Eigen::VectorXd> (posOrt,3);
+		::Eigen::VectorXd goalPos = ::Eigen::Map< ::Eigen::VectorXd> (taskGoal,3);
+		currentPositionError = (actPos - goalPos).norm();
+
+		//if (currentPositionError > 0.5)
+		//	os  << ::Eigen::Map<::Eigen::VectorXd> (configuration, 5).transpose() << " " << goalPos.transpose() << " " << ::Eigen::Map<::Eigen::VectorXd> (&posOrt[3], 3).transpose() << ::std::endl;
+
+		maxPositionError = (currentPositionError > maxPositionError ? currentPositionError : maxPositionError);
+		::std::cout << "Position error: " << (actPos - goalPos).norm() << " [mm]" << ::std::endl;
+
+		::std::cout << " " << ::std::endl;
+		//::std::cout << "Orientation Error:" << RAD2DEG(::std::acos(goalTang.dot(actTang)/(goalTang.norm() * actTang.norm()))) << " [deg]" << ::std::endl; 
+	
+		//::Eigen::VectorXd tmpConf = ::Eigen::Map< ::Eigen::VectorXd> (outputConfiguration, 5);
+		//unscaleVector(tmpConf, scalingFactors);
+		//::std::cout << "Computed configuration: ";
+		//PrintCArray(tmpConf.data(), 5);
+		//::std::cout << endl;
+
+		// update initial configuration
+		memcpy(configuration, outputConfiguration, 5 * sizeof(double));
+		unscaleVector(configuration, 5, scalingFactors);
+	}
+	::std::cout << "max error across the whole dataset" << maxPositionError << ::std::endl;
+	//os << "max error across the whole dataset" << maxPositionError << ::std::endl;
+	os.close();
+	
+}
+
+
+void testOptimizationController()
+{
+	// Initialize robot and kinematics solver
+	//::std::string pathToModel("models/lwpr_forward_2016_4_28_14_32_16_D80.bin");	
+	::std::string pathToModel("models/lwpr_forward_2016_11_17_16_14_55.bin");	
+	LWPRKinematics* kinematics = new LWPRKinematics(pathToModel);
+
+	// Initial robot configuration
+	double initialConfiguration[5] = {pi/4, -0.5*pi, 15, -1.3 * pi, 50};
+
+	// Compute a feasible goal in the task space
+	double goalInTaskSpace[6] = {0};
+	double goalConfiguration[5] = {pi/3, -0.2*pi, 25, -0.3 * pi, 20};
+	double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
+	scaleVector(goalConfiguration, 5, scalingFactors);
+	kinematics->ComputeKinematics(goalConfiguration, goalInTaskSpace);
+
+	//goalInTaskSpace[3] = 0;
+	//goalInTaskSpace[4] = 0;
+	//goalInTaskSpace[5] = 1;
+
+	double outputConfiguration[5] = {0};
+	clock_t start = clock();	
+	runOptimizationController(kinematics, initialConfiguration, goalInTaskSpace, outputConfiguration);
+	clock_t end = clock();
+
+	::std::cout << "time required to solve kinematics: " << (double) (end - start)/CLOCKS_PER_SEC << " [sec]" << ::std::endl;
+
+	double posOrt[6] = {0};
+	kinematics->ComputeKinematics(outputConfiguration, posOrt);
+
+
+	::std::cout << "Goal Position:";
+	PrintCArray(goalInTaskSpace, 3);
+	::std::cout << "Actual Position:";
+	PrintCArray(posOrt, 3);
+	::std::cout << "Goal Tangent:";
+	PrintCArray(&goalInTaskSpace[3], 3);
+	::std::cout << "Actual Tangent:";
+	PrintCArray(&posOrt[3], 3);
+	::std::cout << ::std::endl;
+
+	::Eigen::VectorXd actTang = ::Eigen::Map< ::Eigen::VectorXd> (&posOrt[3],3);
+	::Eigen::VectorXd goalTang = ::Eigen::Map< ::Eigen::VectorXd> (&goalInTaskSpace[3],3);
+
+	::Eigen::VectorXd actPos = ::Eigen::Map< ::Eigen::VectorXd> (posOrt,3);
+	::Eigen::VectorXd goalPos = ::Eigen::Map< ::Eigen::VectorXd> (goalInTaskSpace,3);
+	::std::cout << "Position error: " << (actPos - goalPos).norm() << " [mm]" << ::std::endl;
+	::std::cout << "Orientation Error:" << RAD2DEG(::std::acos(goalTang.dot(actTang)/(goalTang.norm() * actTang.norm()))) << " [deg]" << ::std::endl; 
+	
+	::Eigen::VectorXd tmpConf = ::Eigen::Map< ::Eigen::VectorXd> (outputConfiguration, 5);
+	unscaleVector(tmpConf, scalingFactors);
+	::std::cout << "Computed configuration: ";
+	PrintCArray(tmpConf.data(), 5);
+	::std::cout << endl;
+}
+
+void runOptimizationController(LWPRKinematics* kinematics, double initialConfiguration[], double goalInTaskSapce[6], double outputConfiguration[])
+{
+	::Eigen::VectorXd targetX = ::Eigen::Map<::Eigen::VectorXd> (goalInTaskSapce, 6);
+	::Eigen::VectorXd configuration = ::Eigen::Map<::Eigen::VectorXd> (initialConfiguration, 5);
+	::Eigen::VectorXd currentX;
+	::Eigen::MatrixXd J, Jp;
+
+	int iterations = 0;
+	int maxIterations = 100;
+	double step = 1.0;
+
+	::Eigen::VectorXd error(6), errorPrev(6);
+
+	double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
+
+	scaleVector(configuration, scalingFactors);
+
+	kinematics->ComputeKinematics(configuration, currentX);	
+
+	error = targetX - currentX;
+
+	::Eigen::VectorXd confPrev;
+
+	while (error.segment(0, 3).norm() > 0.5 && iterations < maxIterations)
+	{
+		kinematics->ComputeJacobian(configuration, J);
+		Jp = J.block(0,0,3,5);
+
+		if (step < 1.e-10)
+			break;
+
+		confPrev = configuration;
+		configuration += step * Jp.transpose() * (Jp * Jp.transpose()).inverse() * error.segment(0, 3);
+
+		unscaleVector(configuration, scalingFactors);
+		checkJointLimits(configuration);
+		scaleVector(configuration, scalingFactors);
+
+		kinematics->ComputeKinematics(configuration, currentX);
+		
+		errorPrev = error;
+		error = targetX - currentX;
+
+		while (error.norm() > errorPrev.norm() && step > 0.001)
+		{
+			step *= 0.8;
+			configuration = confPrev;
+			error = errorPrev;
+			configuration += step * Jp.transpose() * (Jp * Jp.transpose()).inverse() * error.segment(0, 3);
+
+			unscaleVector(configuration, scalingFactors);
+			checkJointLimits(configuration);
+			scaleVector(configuration, scalingFactors);
+
+			kinematics->ComputeKinematics(configuration, currentX);
+
+			errorPrev = error;
+			error = targetX - currentX;
+		}
+		//::std::cout << "iterations: " << iterations << ", position error [mm]: " << error.segment(0, 3).norm() << " , step size: " << step << ::std::endl;
+		step = 1.0;
+		iterations++;
+	}
+
+	// check if solution is in the feasible set: if not return --- TODO
+	
+	double t = 10;
+	double mu = 12.0;
+	double eps = 0.00001;
+	double Jcost = 0.0;
+
+
+	for (int k = 0; k < maxIterations; ++k)
+	{
+
+		solveFirstObjective(kinematics, targetX, configuration, t, eps, mu);
+		
+		//::std::cout << "k-iterations: " << k << ", position error: " << error.segment(0, 3).norm() <<", fVal: " << error.segment(3, 3).norm() << ::std::endl;
+		if (1.0/t < eps) break;
+
+		t *= mu;
+	}
+	memcpy(outputConfiguration, configuration.data(), configuration.size() * sizeof(double));
+}
+
+void unscaleVector(::Eigen::VectorXd& x, double scalingFactors[])
+{
+	for (int i = 0; i < x.size(); ++i)
+		x(i) *= scalingFactors[i];
+}
+
+void scaleVector(::Eigen::VectorXd& x, double scalingFactors[])
+{
+	for (int i = 0; i < x.size(); ++i)
+		x(i) /= scalingFactors[i];
+
+}
+
+void scaleVector(double x[], int x_size, double scalingFactors[])
+{
+	for (int i = 0; i < x_size; ++i)
+		x[i] /= scalingFactors[i];
+}
+
+void unscaleVector(double x[], int x_size, double scalingFactors[])
+{
+	for (int i = 0; i < x_size; ++i)
+		x[i] *= scalingFactors[i];
+}
+
+void solveFirstObjective(LWPRKinematics* kinematics, const ::Eigen::VectorXd& targetX, ::Eigen::VectorXd& x, double t, double eps, double mu)
+{
+	double Jcost = 0.0;
+	double JcostPrev = 1000.0;
+	int iterations = 0;
+	int maxIterations = 100;
+	double step = 0.80;
+	double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
+	::Eigen::VectorXd xPrev(x);
+	::Eigen::MatrixXd J;
+	double realCost = 0;
+	computeObjectiveFunction(kinematics, targetX, x, t, Jcost, realCost);
+	while ( ::std::abs(Jcost - JcostPrev) > 1.e-03  && iterations < maxIterations)
+	{
+		computeObjectiveFunctionJacobian(kinematics, targetX, x, t, J);
+		xPrev = x;
+		JcostPrev = Jcost;
+		x -= step/t * J.transpose() * (J * J.transpose()).inverse() * Jcost;
+
+		unscaleVector(x, scalingFactors);
+		checkJointLimits(x);
+		scaleVector(x, scalingFactors);
+
+		bool respectConstraints = computeObjectiveFunction(kinematics, targetX, x, t, Jcost, realCost);
+		step = 0.8;
+		int iterationsInner = 0;
+		while ( (Jcost > JcostPrev && step > 0.0000001 && iterationsInner < maxIterations) || !respectConstraints)
+		{
+				step *= 0.8;
+				Jcost = JcostPrev;
+				x = xPrev;
+				x -= step * J.transpose() * (J * J.transpose()).inverse() * Jcost;
+				unscaleVector(x, scalingFactors);
+				checkJointLimits(x);
+				scaleVector(x, scalingFactors);
+
+				respectConstraints = computeObjectiveFunction(kinematics, targetX, x, t, Jcost, realCost);
+				iterationsInner++;
+		}
+	//	::std::cout << "iterations: " << iterations << ", fVal: " << Jcost << ::std::endl;
+		iterations++;
+	}
+}
+
+void computeObjectiveFunctionJacobian(LWPRKinematics* kinematics, const ::Eigen::VectorXd& targetX, ::Eigen::VectorXd& x, double t, ::Eigen::MatrixXd& J)
+{
+	double epsilon = 0.00001;
+	double invEpsilon = 1.0/epsilon;
+	
+	double f0, fNew, JJ;
+	computeObjectiveFunction(kinematics, targetX, x, t, f0, JJ);
+	::Eigen::VectorXd perturbedX = x;
+
+	J.resize(1, x.size());
+	for(int i = 0; i < x.size(); ++i)
+	{
+		perturbedX(i) += epsilon;
+		computeObjectiveFunction(kinematics, targetX, perturbedX, t, fNew, JJ);
+		J(0, i) = (fNew - f0) * invEpsilon;
+		perturbedX(i) = x(i);
+	}
+}
+
+bool computeObjectiveFunction(LWPRKinematics* kinematics, const ::Eigen::VectorXd& targetX, ::Eigen::VectorXd& x, double t, double& funVal, double& realError)
+{
+	::Eigen::VectorXd outX;
+	kinematics->ComputeKinematics(x, outX);
+
+	double constraintSlack = max(0.001, 1.0 - (outX.segment(0, 3) - targetX.segment(0, 3)).norm());
+	
+	double phi = -::std::log(constraintSlack);
+	realError = (outX.segment(3, 3) - targetX.segment(3, 3)).norm();
+	funVal = t * realError + phi;
+
+	if (1.0 - (outX.segment(0, 3) - targetX.segment(0, 3)).norm() < 0) return false;
+	
+	return true;
+}
+
+void checkJointLimits(::Eigen::VectorXd& configuration)
+{
+	configuration(0) = ::std::fmod(configuration(0),  M_PI);
+	configuration(1) = ::std::fmod(configuration(1),  M_PI);
+	configuration(3) = ::std::fmod(configuration(3),  M_PI);
+
+	if (configuration(2) < 0) configuration(2) = 0;
+	if (configuration(2) > 34.5) configuration(2) = 34.5;
+
+	if (configuration(4) < -100) configuration(2) = -100;
+	if (configuration(4) >  100) configuration(2) = 100;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------//
 void evaluateModel()
 {
 	// load training data
@@ -86,10 +437,10 @@ void evaluateModel()
 
 void fitMechanicsBasedKinematics()
 {
-	::std::ofstream os("parameters.txt");
+	::std::ofstream os("C:\Users\RC\Dropbox\parameters.txt");
 	// load training data
-	::std::vector< ::std::string> dataStr = ReadLinesFromFile("./2016-10-03-16-12-39_record_joint.txt");
-	//::std::vector< ::std::string> dataStr = ReadLinesFromFile("./test_fitting.txt");
+	//::std::vector< ::std::string> dataStr = ReadLinesFromFile("./2016-10-06-09-46-43_record_joint.txt");
+	::std::vector< ::std::string> dataStr = ReadLinesFromFile("./test_fitting.txt");
 	::std::vector< ::std::vector< double>> data_in, data_out;
 
 	// load model with initial parameters
@@ -245,56 +596,56 @@ void ComputeErrorJacobian(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedK
 }
 
 
-void testSVMClassifier()
-{
-
-    // Data for visual representation
-    int width = 512, height = 512;
-    Mat image = Mat::zeros(height, width, CV_8UC3);
-    // Set up training data
-    int labels[4] = {1, -1, -1, -1};
-    float trainingData[4][2] = { {501, 10}, {255, 10}, {501, 255}, {10, 501} };
-    Mat trainingDataMat(4, 2, CV_32FC1, trainingData);
-    Mat labelsMat(4, 1, CV_32SC1, labels);
-    // Train the SVM
-    Ptr<SVM> svm = SVM::create();
-    svm->setType(SVM::C_SVC);
-    svm->setKernel(SVM::LINEAR);
-    svm->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 100, 1e-6));
-    svm->train(trainingDataMat, ROW_SAMPLE, labelsMat);
-    // Show the decision regions given by the SVM
-    Vec3b green(0,255,0), blue (255,0,0);
-    for (int i = 0; i < image.rows; ++i)
-        for (int j = 0; j < image.cols; ++j)
-        {
-            Mat sampleMat = (Mat_<float>(1,2) << j,i);
-            float response = svm->predict(sampleMat);
-            if (response == 1)
-                image.at<Vec3b>(i,j)  = green;
-            else if (response == -1)
-                image.at<Vec3b>(i,j)  = blue;
-        }
-    // Show the training data
-    int thickness = -1;
-    int lineType = 8;
-    circle( image, Point(501,  10), 5, Scalar(  0,   0,   0), thickness, lineType );
-    circle( image, Point(255,  10), 5, Scalar(255, 255, 255), thickness, lineType );
-    circle( image, Point(501, 255), 5, Scalar(255, 255, 255), thickness, lineType );
-    circle( image, Point( 10, 501), 5, Scalar(255, 255, 255), thickness, lineType );
-    // Show support vectors
-    thickness = 2;
-    lineType  = 8;
-    Mat sv = svm->getUncompressedSupportVectors();
-    for (int i = 0; i < sv.rows; ++i)
-    {
-        const float* v = sv.ptr<float>(i);
-        circle( image,  Point( (int) v[0], (int) v[1]),   6,  Scalar(128, 128, 128), thickness, lineType);
-    }
-    imwrite("result.png", image);        // save the image
-    imshow("SVM Simple Example", image); // show it to the user
-    waitKey(0);
-
-}
+//void testSVMClassifier()
+//{
+//
+//    // Data for visual representation
+//    int width = 512, height = 512;
+//    Mat image = Mat::zeros(height, width, CV_8UC3);
+//    // Set up training data
+//    int labels[4] = {1, -1, -1, -1};
+//    float trainingData[4][2] = { {501, 10}, {255, 10}, {501, 255}, {10, 501} };
+//    Mat trainingDataMat(4, 2, CV_32FC1, trainingData);
+//    Mat labelsMat(4, 1, CV_32SC1, labels);
+//    // Train the SVM
+//    Ptr<SVM> svm = SVM::create();
+//    svm->setType(SVM::C_SVC);
+//    svm->setKernel(SVM::LINEAR);
+//    svm->setTermCriteria(TermCriteria(TermCriteria::MAX_ITER, 100, 1e-6));
+//    svm->train(trainingDataMat, ROW_SAMPLE, labelsMat);
+//    // Show the decision regions given by the SVM
+//    Vec3b green(0,255,0), blue (255,0,0);
+//    for (int i = 0; i < image.rows; ++i)
+//        for (int j = 0; j < image.cols; ++j)
+//        {
+//            Mat sampleMat = (Mat_<float>(1,2) << j,i);
+//            float response = svm->predict(sampleMat);
+//            if (response == 1)
+//                image.at<Vec3b>(i,j)  = green;
+//            else if (response == -1)
+//                image.at<Vec3b>(i,j)  = blue;
+//        }
+//    // Show the training data
+//    int thickness = -1;
+//    int lineType = 8;
+//    circle( image, Point(501,  10), 5, Scalar(  0,   0,   0), thickness, lineType );
+//    circle( image, Point(255,  10), 5, Scalar(255, 255, 255), thickness, lineType );
+//    circle( image, Point(501, 255), 5, Scalar(255, 255, 255), thickness, lineType );
+//    circle( image, Point( 10, 501), 5, Scalar(255, 255, 255), thickness, lineType );
+//    // Show support vectors
+//    thickness = 2;
+//    lineType  = 8;
+//    Mat sv = svm->getUncompressedSupportVectors();
+//    for (int i = 0; i < sv.rows; ++i)
+//    {
+//        const float* v = sv.ptr<float>(i);
+//        circle( image,  Point( (int) v[0], (int) v[1]),   6,  Scalar(128, 128, 128), thickness, lineType);
+//    }
+//    imwrite("result.png", image);        // save the image
+//    imshow("SVM Simple Example", image); // show it to the user
+//    waitKey(0);
+//
+//}
 
 
 void testSimulator()
@@ -541,3 +892,4 @@ void testKinematicsSingleConfiguration()
 
 	_sleep(10000);
 }
+

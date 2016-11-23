@@ -22,11 +22,11 @@ void TestInverseKinematics();
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	//GenerateTrainingData();
+	GenerateTrainingData();
 	//GenerateRandomConfigurations();
 	//TestJointAnglesConversion();
 	//ExampleCameraRotationComputation();
-	TestInverseKinematics();
+	//TestInverseKinematics();
 }
 
 void TestInverseKinematics()

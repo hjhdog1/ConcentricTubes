@@ -70,12 +70,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Utilities;$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation;../lwpr-1.2.6/include</AdditionalIncludeDirectories>
       <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lwpr.lib;Utilities.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../$(Configuration)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -83,13 +83,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation;../Utilities</AdditionalIncludeDirectories>
       <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opencv_world310.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../$(Platform)/$(Configuration); $(OPENCV_DIR)\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -98,14 +98,14 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../Utilities;$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation;../lwpr-1.2.6/include</AdditionalIncludeDirectories>
       <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opencv_world310.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lwpr.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../$(Configuration); $(OPENCV_DIR)\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -115,15 +115,15 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation;../Utilities</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation;../Utilities;../lwpr-1.2.6/include;</AdditionalIncludeDirectories>
       <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opencv_world310.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../$(Platform)/$(Configuration); $(OPENCV_DIR)\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>lwpr.lib;opencv_world310.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../$(Platform)/$(Configuration); $(OPENCV_DIR)\lib;$(Platform)/$(Configuration)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
