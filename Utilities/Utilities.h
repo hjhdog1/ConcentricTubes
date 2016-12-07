@@ -148,3 +148,14 @@ void SO3ToEigen(const SO3& rot, ::Eigen::Matrix<double, 3, 3>& rotEigen);
 void PrintVec3(const Vec3& vecToPrint);
 
 std::wstring s2ws(const std::string& s);
+
+
+template <typename T>
+::std::string num2str(T& inputVariable)
+{
+	::std::ostringstream convert;   
+
+	convert << inputVariable;   
+
+	return convert.str();
+}

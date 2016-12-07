@@ -11,7 +11,7 @@
 #include "MechanicsBasedKinematics.h"
 #include "CTRFactory.h"
 
-void GenerateTrainingData();
+void GenerateTrainingData(int numOfPointPerDim = 51);
 void GenerateRandomConfigurations(int num = 100);
 
 void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& configurations);
@@ -22,8 +22,9 @@ void TestInverseKinematics();
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	GenerateTrainingData();
-	//GenerateRandomConfigurations();
+	//for (int i = 5; i < 22; i++)
+	//	GenerateTrainingData(i);
+	GenerateRandomConfigurations(100);
 	//TestJointAnglesConversion();
 	//ExampleCameraRotationComputation();
 	//TestInverseKinematics();
@@ -171,19 +172,18 @@ void GenerateRandomConfigurations(int num)
 }
 
 
-void GenerateTrainingData()
+void GenerateTrainingData(int numOfPointPerDim)
 {
 	CTR* robot = CTRFactory::buildCTR("");
 	
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
 	kinematics->ActivateIVPJacobian();
 
-	::std::string filename = GetDateString() + "_training.txt";
+	::std::string filename = GetDateString() + "_" + num2str(numOfPointPerDim) + "_training.txt";
 	::std::ofstream os(filename.c_str());
 
 	clock_t startTime = clock(); //Start timer
 
-	int numOfPointPerDim = 51;
 	::std::vector<double* > configurations;
 	GenerateSamples(robot, numOfPointPerDim, configurations);
 

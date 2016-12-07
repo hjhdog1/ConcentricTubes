@@ -54,15 +54,20 @@ void scaleVector(double x[], int x_size, double scalingFactors[]);
 
 int main()
 {
-	testOptimizationController();
+	//testOptimizationController();
 	//testOptimizationControllerOnData();
 	//fitMechanicsBasedKinematics();
+	LWPR_Object* model = new LWPR_Object("models/hysteresis.bin");
+	double inputArray[6] = {0, 0, 1, 0, 0, 0};
+	::std::vector<double> input(inputArray, inputArray + 6);
+	::std::vector<double> output = model->predict(input, 0.0000000000001);
 	std::cout << "Finished. Press enter to close." << std::endl;
 	std::cin.ignore();
 
 	return 0;
 }
 
+double scalingFactors[5] = {M_PI/180.0, M_PI/180.0, 35, M_PI/180.0, 100};
 
 void testOptimizationControllerOnData()
 {
@@ -72,8 +77,8 @@ void testOptimizationControllerOnData()
 	LWPRKinematics* kinematics = new LWPRKinematics(pathToModel);
 
 	//read data
-	//::std::vector<::std::string> dataStr = ReadLinesFromFile("./testControl.txt");
-	::std::vector<::std::string> dataStr = ReadLinesFromFile("./debug_control2.txt");
+	::std::vector<::std::string> dataStr = ReadLinesFromFile("./testControl.txt");
+	//::std::vector<::std::string> dataStr = ReadLinesFromFile("./debug_control2.txt");
 	::std::vector<double> dataVec;
 	double configuration[5] = {0};
 	double taskGoal[6] = {0};
@@ -83,12 +88,11 @@ void testOptimizationControllerOnData()
 	double initialConfiguration[5] = {pi, pi, 15, 0, 0};
 	double posOrt[6] = {0};
 
-	double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
-
 	double maxPositionError = 0;
 	double currentPositionError = 0;
 
 	::std::ofstream os("results.txt");
+	int numSample = 0;
 	for (::std::vector<::std::string>::iterator it = dataStr.begin(); it != dataStr.end(); ++it)
 	{
 		dataVec.clear();
@@ -101,7 +105,7 @@ void testOptimizationControllerOnData()
 		clock_t end = clock();
 
 		// validate
-		::std::cout << "time required to solve kinematics: " << (double) (end - start)/CLOCKS_PER_SEC << " [sec]" << ::std::endl;
+		::std::cout << "time required to solve kinematics: " << (double) (end - start)/CLOCKS_PER_SEC << " [sec]" << ", test sample: " << numSample << ::std::endl;
 
 		kinematics->ComputeKinematics(outputConfiguration, posOrt);
 
@@ -117,8 +121,8 @@ void testOptimizationControllerOnData()
 		//::std::cout << ::std::endl;
 		//::std::cout << ::std::endl;
 
-		//::Eigen::VectorXd actTang = ::Eigen::Map< ::Eigen::VectorXd> (&posOrt[3],3);
-		//::Eigen::VectorXd goalTang = ::Eigen::Map< ::Eigen::VectorXd> (&taskGoal[3],3);
+		::Eigen::VectorXd actTang = ::Eigen::Map< ::Eigen::VectorXd> (&posOrt[3],3);
+		::Eigen::VectorXd goalTang = ::Eigen::Map< ::Eigen::VectorXd> (&taskGoal[3],3);
 
 		::Eigen::VectorXd actPos = ::Eigen::Map< ::Eigen::VectorXd> (posOrt,3);
 		::Eigen::VectorXd goalPos = ::Eigen::Map< ::Eigen::VectorXd> (taskGoal,3);
@@ -129,9 +133,7 @@ void testOptimizationControllerOnData()
 
 		maxPositionError = (currentPositionError > maxPositionError ? currentPositionError : maxPositionError);
 		::std::cout << "Position error: " << (actPos - goalPos).norm() << " [mm]" << ::std::endl;
-
-		::std::cout << " " << ::std::endl;
-		//::std::cout << "Orientation Error:" << RAD2DEG(::std::acos(goalTang.dot(actTang)/(goalTang.norm() * actTang.norm()))) << " [deg]" << ::std::endl; 
+		::std::cout << "Orientation Error:" << RAD2DEG(::std::acos(goalTang.dot(actTang)/(goalTang.norm() * actTang.norm()))) << " [deg]" << ::std::endl; 
 	
 		//::Eigen::VectorXd tmpConf = ::Eigen::Map< ::Eigen::VectorXd> (outputConfiguration, 5);
 		//unscaleVector(tmpConf, scalingFactors);
@@ -142,6 +144,7 @@ void testOptimizationControllerOnData()
 		// update initial configuration
 		memcpy(configuration, outputConfiguration, 5 * sizeof(double));
 		unscaleVector(configuration, 5, scalingFactors);
+		numSample++;
 	}
 	::std::cout << "max error across the whole dataset" << maxPositionError << ::std::endl;
 	//os << "max error across the whole dataset" << maxPositionError << ::std::endl;
@@ -163,7 +166,7 @@ void testOptimizationController()
 	// Compute a feasible goal in the task space
 	double goalInTaskSpace[6] = {0};
 	double goalConfiguration[5] = {pi/3, -0.2*pi, 25, -0.3 * pi, 20};
-	double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
+
 	scaleVector(goalConfiguration, 5, scalingFactors);
 	kinematics->ComputeKinematics(goalConfiguration, goalInTaskSpace);
 
@@ -220,7 +223,7 @@ void runOptimizationController(LWPRKinematics* kinematics, double initialConfigu
 
 	::Eigen::VectorXd error(6), errorPrev(6);
 
-	double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
+	//double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
 
 	scaleVector(configuration, scalingFactors);
 
@@ -230,7 +233,7 @@ void runOptimizationController(LWPRKinematics* kinematics, double initialConfigu
 
 	::Eigen::VectorXd confPrev;
 
-	while (error.segment(0, 3).norm() > 0.5 && iterations < maxIterations)
+	while (error.segment(0, 3).norm() > 1.0 && iterations < maxIterations)
 	{
 		kinematics->ComputeJacobian(configuration, J);
 		Jp = J.block(0,0,3,5);
@@ -272,10 +275,15 @@ void runOptimizationController(LWPRKinematics* kinematics, double initialConfigu
 	}
 
 	// check if solution is in the feasible set: if not return --- TODO
-	
+	if (error.segment(0, 3).norm() > 0.5)
+	{
+		memcpy(outputConfiguration, configuration.data(), configuration.size() * sizeof(double));
+		return;
+	}
+
 	double t = 10;
 	double mu = 12.0;
-	double eps = 0.00001;
+	double eps = 0.0001;
 	double Jcost = 0.0;
 
 
@@ -322,9 +330,9 @@ void solveFirstObjective(LWPRKinematics* kinematics, const ::Eigen::VectorXd& ta
 	double Jcost = 0.0;
 	double JcostPrev = 1000.0;
 	int iterations = 0;
-	int maxIterations = 100;
+	int maxIterations = 50;
 	double step = 0.80;
-	double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
+	//double scalingFactors[5] = {M_PI, M_PI, 35, M_PI, 100};
 	::Eigen::VectorXd xPrev(x);
 	::Eigen::MatrixXd J;
 	double realCost = 0;
