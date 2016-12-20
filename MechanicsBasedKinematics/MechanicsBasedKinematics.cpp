@@ -169,6 +169,15 @@ void MechanicsBasedKinematics::GetTipTangentVector(::Eigen::Vector3d& tangent) c
 	tangent = Vec3ToEigen(tmp.GetOrientation().GetZ());
 }
 
+void MechanicsBasedKinematics::GetRobotShape(const ::std::vector<double>& svector, ::std::vector<::Eigen::Vector3d>& points) 
+{
+	::std::vector<SE3> bishopFramesLocal;
+	GetBishopFrame(svector, bishopFramesLocal);
+
+	for(::std::vector<SE3>::iterator it = bishopFramesLocal.begin(); it != bishopFramesLocal.end(); ++it)
+		points.push_back(Vec3ToEigen(it->GetPosition()));
+}
+
 void MechanicsBasedKinematics::GetBishopFrame(SE3& bishopFrame) const
 {
 	bishopFrame = this->bishopFrames.back();
@@ -179,7 +188,7 @@ void MechanicsBasedKinematics::GetBishopFrame(double s, SE3& bishopFrame)
 	GetBishopFrame(s, bishopFrame, this->bishopFrames);
 }
 
-void MechanicsBasedKinematics::GetBishopFrame(std::vector<double> s, std::vector<SE3>& bishopFrame)
+void MechanicsBasedKinematics::GetBishopFrame(const std::vector<double>& s, std::vector<SE3>& bishopFrame)
 {
 	int sizeS = s.size();
 	if(bishopFrame.size() != sizeS)

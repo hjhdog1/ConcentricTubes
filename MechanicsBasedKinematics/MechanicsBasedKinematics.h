@@ -27,13 +27,14 @@ public:
 	bool ComputeInveseKinematics(double* const targetWorkspace, double rotation[], double translation[], int maxIter=500);
 
 	void GetTipPosition(::Eigen::Vector3d& position) const;
+	void GetRobotShape(const std::vector<double>& s, ::std::vector<::Eigen::Vector3d>& points);
 	void GetTipTangentVector(::Eigen::Vector3d& tangent) const;
 	void ComputeInverseKinematicsError(double* const targetWorkspace, ::Eigen::Matrix<double, 4, 1>& error);
 	bool ComputeInverseLSQJacobian(::Eigen::MatrixXd& errorJacobian, double* targetWorkspace);
 
 	void GetBishopFrame(SE3& bishopFrame) const;
 	void GetBishopFrame(double s, SE3& bishopFrame);
-	void GetBishopFrame(std::vector<double> s, std::vector<SE3>& bishopFrame);
+	void GetBishopFrame(const std::vector<double>& s, std::vector<SE3>& bishopFrame);
 	double GetInnerTubeRotation(double s);
 	double GetInnerTubeRotation();
 	bool GetControlJacobian(double s, Eigen::MatrixXd& controlJacobian);

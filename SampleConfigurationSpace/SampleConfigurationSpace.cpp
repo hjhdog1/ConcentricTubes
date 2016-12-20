@@ -138,7 +138,7 @@ void GenerateRandomConfigurations(int num)
 	double translationRange = (translationUpperLimit - translationLowerLimit);
 
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot, 100);
-	//kinematics->ActivateIVPJacobian();
+	kinematics->ActivateIVPJacobian();
 	
 	::std::string filename = GetDateString() + "_random.txt";
 	::std::ofstream os(filename.c_str());

@@ -10,7 +10,8 @@
 #include "Utilities.h"
 #include <Eigen/Dense>
 #include <ctime>
-
+#include <tinyxml.h>
+#include "ShapeMeasurement.h"
 //#include <opencv2/core.hpp>
 //#include <opencv2/imgproc.hpp>
 //#include "opencv2/imgcodecs.hpp"
@@ -35,6 +36,7 @@ void testKinematicsSingleConfiguration();
 void testSVMClassifier();
 void fitMechanicsBasedKinematics();
 double ComputeErrorOnDataset(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out);
+double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out);
 void ComputeErrorJacobian(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out,  double error_original,::Eigen::MatrixXd& jacobian);
 void preprocessData(CTR* robot,::std::vector<::std::string>& dataStr, DoubleVec& data_in, DoubleVec& data_out);
 void evaluateModel();
@@ -52,20 +54,113 @@ void unscaleVector(double x[], int x_size, double scalingFactors[]);
 void scaleVector(::Eigen::VectorXd& x, double scalingFactors[]);
 void scaleVector(double x[], int x_size, double scalingFactors[]);
 
+// tinyXML test
+void testTinyXML();
+void testShapeDataset();
+
 int main()
 {
 	//testOptimizationController();
 	//testOptimizationControllerOnData();
 	//fitMechanicsBasedKinematics();
-	LWPR_Object* model = new LWPR_Object("models/hysteresis.bin");
-	double inputArray[6] = {0, 0, 1, 0, 0, 0};
-	::std::vector<double> input(inputArray, inputArray + 6);
-	::std::vector<double> output = model->predict(input, 0.0000000000001);
-	std::cout << "Finished. Press enter to close." << std::endl;
-	std::cin.ignore();
+	//testTinyXML();
+	testShapeDataset();
 
 	return 0;
 }
+
+void testShapeDataset()
+{
+	ShapeDataset dataset;
+	BuildShapeDatasetFromString("measurements.xml", dataset);
+	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;
+
+	for(int i = 0; i < dataset.size(); ++i)
+	{
+		::std::cout << "Measurement:" << i << ::std::endl;
+		::std::cout << dataset[i] << ::std::endl;
+	}
+}
+
+void composeXML()
+{
+	// create and store an XML file
+	TiXmlDocument doc;
+	TiXmlDeclaration * decl = new TiXmlDeclaration( "1.0", "", "" );
+	TiXmlElement* measurement = new TiXmlElement( "Measurement" );
+
+	TiXmlElement* configuration = new TiXmlElement( "Configuration" );
+	configuration->SetAttribute("q", "180 180 32 0 12");
+	measurement->LinkEndChild(configuration);
+
+	TiXmlElement* shape = new TiXmlElement( "Shape" );
+	TiXmlElement* point = new TiXmlElement( "Point" );
+	shape->LinkEndChild(point);
+	point->SetAttribute("coords", "0 0 0");
+	point->SetAttribute("s", "0");
+
+	point = new TiXmlElement( "Point" );
+	shape->LinkEndChild(point);
+	point->SetAttribute("coords", "0 0 0");
+	point->SetAttribute("s", "0");	measurement->LinkEndChild(shape);
+
+	doc.LinkEndChild(measurement);
+	doc.SaveFile( "measurements.xml" );
+}
+
+void parseXML()
+{
+	TiXmlDocument doc( "measurements.xml" );
+	if (!doc.LoadFile()) return;
+
+	TiXmlHandle hDoc(&doc);
+	TiXmlElement* pElem, *pElemChild;
+	TiXmlHandle hRoot(0);
+
+	// parse all measurements
+	pElem=hDoc.FirstChildElement("Measurement").Element();
+	char buffer[100];
+	double s, x, y, z;
+	int measurmentCounter = 0; 
+	int pointCounter;
+
+	::std::string configuration;
+	::std::vector<double> configurationDVector;
+
+	for (pElem; pElem; pElem=pElem->NextSiblingElement())
+	{
+		::std::cout << "Measurement :" << measurmentCounter++ << ::std::endl;
+
+		pElemChild = pElem->FirstChildElement("Configuration");
+		configuration = pElemChild->GetText();
+		configurationDVector = DoubleVectorFromString(configuration);
+		::std::cout << "Configuration:";
+		PrintCArray(configurationDVector.data(), configurationDVector.size());
+
+		pElemChild = pElem->FirstChildElement("Shape");
+		pElemChild = pElemChild->FirstChildElement("Point");
+
+		pointCounter = 0;
+		for (pElemChild; pElemChild; pElemChild=pElemChild->NextSiblingElement())
+		{
+			pElemChild->QueryDoubleAttribute("s", &s);
+			pElemChild->QueryDoubleAttribute("x", &x);
+			pElemChild->QueryDoubleAttribute("y", &y);
+			pElemChild->QueryDoubleAttribute("z", &z);
+			::std::cout << "Point " << pointCounter++ << ": x:" << x << ", y:" << y << ", z:" << z << ", s:" << s << ::std::endl;
+		}
+		::std::cout << ::std::endl;
+	}
+	
+
+	}
+
+void testTinyXML()
+{
+	//composeXML();
+	parseXML();
+}
+
 
 double scalingFactors[5] = {M_PI/180.0, M_PI/180.0, 35, M_PI/180.0, 100};
 
@@ -445,7 +540,7 @@ void evaluateModel()
 
 void fitMechanicsBasedKinematics()
 {
-	::std::ofstream os("C:\Users\RC\Dropbox\parameters.txt");
+	::std::ofstream os("C:/Users/RC/Dropbox/parameters.txt");
 	// load training data
 	//::std::vector< ::std::string> dataStr = ReadLinesFromFile("./2016-10-06-09-46-43_record_joint.txt");
 	::std::vector< ::std::string> dataStr = ReadLinesFromFile("./test_fitting.txt");
@@ -550,6 +645,41 @@ void preprocessData(CTR* robot,::std::vector<::std::string>& dataStr, DoubleVec&
 		data_in.push_back(tmpAbsConf);
 		data_out.push_back(tmpPosition);
 	}
+}
+
+double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out)
+{
+	double rotation[3] = {0};
+	double translation[3] = {0};
+
+	::std::vector<::Eigen::Vector3d> positionsAlongRobotModel;
+	::Eigen::Vector3d positionsAlongRobotSensor;
+	::std::vector<double> robot_length_parameter;
+
+	double error = 0;
+	::Eigen::Vector3d instant_error;
+
+	for (int i = 0; i < data_in.size(); ++i)
+	{
+		memcpy(rotation, data_in[i].data(), sizeof(double) * 3);
+		memcpy(translation, &data_in[i].data()[3], sizeof(double) * 3);
+
+		// TODO
+		//actual_position = ::Eigen::Map<::Eigen::Vector3d> (data_out[i].data(), 3);	
+		//robot_length_parameter = ...;
+
+		kinematics->ComputeKinematics(rotation, translation);
+		kinematics->GetRobotShape(robot_length_parameter, positionsAlongRobotModel);
+
+
+		//instant_error = actual_position - position;
+
+		error += instant_error.norm();
+	}
+
+	error /= data_in.size();
+
+	return error;
 }
 
 double ComputeErrorOnDataset(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out)

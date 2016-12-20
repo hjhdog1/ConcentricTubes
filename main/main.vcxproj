@@ -70,13 +70,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../Utilities;$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation;../lwpr-1.2.6/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../tinyxml;../Utilities;$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation;../lwpr-1.2.6/include</AdditionalIncludeDirectories>
       <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>lwpr.lib;Utilities.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../$(Configuration)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>tinyxml.lib;lwpr.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../$(Configuration); $(OPENCV_DIR)\lib;../Releasetinyxml</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -98,15 +98,15 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>../Utilities;$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation;../lwpr-1.2.6/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../tinyxml;../Utilities;$(OPENCV_DIR)\..\..\include;../Lib;../LieGroup;../MechanicsBasedKinematics;../Filtering;../Simulation;../lwpr-1.2.6/include</AdditionalIncludeDirectories>
       <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>lwpr.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../$(Configuration); $(OPENCV_DIR)\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>tinyxml.lib;lwpr.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../$(Configuration); $(OPENCV_DIR)\lib;../Releasetinyxml</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -128,6 +128,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ShapeMeasurement.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ShapeMeasurement.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
