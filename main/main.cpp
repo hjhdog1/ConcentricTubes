@@ -35,11 +35,14 @@ void testKinematics();
 void testKinematicsSingleConfiguration();
 void testSVMClassifier();
 void fitMechanicsBasedKinematics();
+void fitMechanicsBasedKinematicsShape();
 double ComputeErrorOnDataset(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out);
-double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out);
+double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset);
 void ComputeErrorJacobian(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out,  double error_original,::Eigen::MatrixXd& jacobian);
+void ComputeErrorJacobianShape(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset, double error_original, ::Eigen::MatrixXd& jacobian);
 void preprocessData(CTR* robot,::std::vector<::std::string>& dataStr, DoubleVec& data_in, DoubleVec& data_out);
 void evaluateModel();
+double ComputeSingleShapeError(CTR* robot, MechanicsBasedKinematics* kinematics, const Measurement& meas);
 
 // controller tests
 void testOptimizationController();
@@ -64,9 +67,127 @@ int main()
 	//testOptimizationControllerOnData();
 	//fitMechanicsBasedKinematics();
 	//testTinyXML();
-	testShapeDataset();
+	//testShapeDataset();
+	fitMechanicsBasedKinematicsShape();
 
 	return 0;
+}
+
+void fitMechanicsBasedKinematicsShape()
+{
+	::std::ofstream os("C:/Users/RC/Dropbox/parameters.txt");
+	
+	// load training data
+	ShapeDataset dataset;
+	BuildShapeDatasetFromString("measurements.xml", dataset);
+	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
+
+	// build the robot
+	CTR* robot = CTRFactory::buildCTR("");
+	::std::vector<double*> parameters = robot->GetFreeParameters();
+	::Eigen::VectorXd params(5);
+	for(int i = 0; i < 5; ++i)
+		params(i) = *parameters[i];
+
+	// initialize mechanics-based kinematics
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot,100);
+	kinematics->ActivateIVPJacobian();
+
+	double error_prev = 0.0;
+
+	double tolerance = 0.00001;
+	int max_iterations = 1000;
+
+	int iter = 0;
+	::Eigen::MatrixXd error_jacobian(5,1);
+	
+	double step = 0.00001;
+	
+	double mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset);
+
+	::std::cout << mean_error << ::std::endl;
+
+	double scale_factor = 100;
+
+	// loop until convergence
+	clock_t start = clock();
+	while ( ::std::abs(mean_error - error_prev) > tolerance && iter < max_iterations)
+	{
+		
+		error_prev = mean_error;
+
+		// compute error jacobian with respect to parameters		
+		ComputeErrorJacobianShape(params, robot, kinematics, dataset, mean_error, error_jacobian);
+
+		// update parameters
+		for(int i = 0; i < 5; i+=2)
+			error_jacobian(i)/= scale_factor * scale_factor;
+		params -= step * error_jacobian;
+		
+		// update robot based on updated parameters
+		for(int i = 0 ; i < parameters.size() ; i++)
+			*parameters[i] = params(i);
+
+		// update error
+		mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset);
+
+
+		if (mean_error > error_prev)
+			step *= 0.90;
+
+		clock_t end  = clock();
+		double duration = (end - start)/(double) CLOCKS_PER_SEC/(double) ++iter;
+
+		if (iter % 10 == 0)
+			::std::cout << "iter:" << iter << "  " << "mean_error:" <<  mean_error << "   step:" << step <<  "   Estimated Time left:" << (max_iterations - iter) * duration/60.0 << ::std::endl; 
+
+		if (iter % 50 == 0)
+		{
+			::std::cout << "intermediate parameter values:" << params.transpose() << ::std::endl;
+			os << params.transpose() << "   " << mean_error << ::std::endl;
+		}
+		
+	}
+	os.close();
+	::std::cout << "Calibrated model parameters:" << params.transpose() << ::std::endl; 
+}
+
+double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset)
+{
+	double error = 0.0;
+	for (int i = 0; i < dataset.size(); ++i)
+		error += ComputeSingleShapeError(robot, kinematics, dataset[i]);
+
+	return error/dataset.size();
+}
+
+
+double ComputeSingleShapeError(CTR* robot, MechanicsBasedKinematics* kinematics, const Measurement& meas)
+{
+	double rotation[3] = {0};
+	double translation[3] = {0};
+
+	memcpy(rotation, meas.GetConfiguration().data(), sizeof(double) * 3);
+	memcpy(translation, &meas.GetConfiguration().data()[3], sizeof(double) * 3);
+
+	::std::vector<::Eigen::Vector3d> positionsAlongRobotExp = meas.GetShapeEig();
+	::std::vector<::Eigen::Vector3d> positionsAlongRobotModel;
+	::Eigen::Vector3d error;
+
+	::std::vector<double> robot_length_parameter = meas.GetArcLength();
+
+	kinematics->ComputeKinematics(rotation, translation);
+	kinematics->GetRobotShape(robot_length_parameter, positionsAlongRobotModel);
+
+	double sum = 0;
+
+	for(int i = 0; i < positionsAlongRobotModel.size(); ++i)
+	{
+		error = positionsAlongRobotExp[i] - positionsAlongRobotModel[i];
+		sum += error.norm();
+	}
+
+	return sum/positionsAlongRobotModel.size();
 }
 
 void testShapeDataset()
@@ -651,40 +772,7 @@ void preprocessData(CTR* robot,::std::vector<::std::string>& dataStr, DoubleVec&
 	}
 }
 
-double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out)
-{
-	double rotation[3] = {0};
-	double translation[3] = {0};
 
-	::std::vector<::Eigen::Vector3d> positionsAlongRobotModel;
-	::Eigen::Vector3d positionsAlongRobotSensor;
-	::std::vector<double> robot_length_parameter;
-
-	double error = 0;
-	::Eigen::Vector3d instant_error;
-
-	for (int i = 0; i < data_in.size(); ++i)
-	{
-		memcpy(rotation, data_in[i].data(), sizeof(double) * 3);
-		memcpy(translation, &data_in[i].data()[3], sizeof(double) * 3);
-
-		// TODO
-		//actual_position = ::Eigen::Map<::Eigen::Vector3d> (data_out[i].data(), 3);	
-		//robot_length_parameter = ...;
-
-		kinematics->ComputeKinematics(rotation, translation);
-		kinematics->GetRobotShape(robot_length_parameter, positionsAlongRobotModel);
-
-
-		//instant_error = actual_position - position;
-
-		error += instant_error.norm();
-	}
-
-	error /= data_in.size();
-
-	return error;
-}
 
 double ComputeErrorOnDataset(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out)
 {
@@ -737,6 +825,25 @@ void ComputeErrorJacobian(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedK
 
 }
 
+void ComputeErrorJacobianShape(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset, double error_original, ::Eigen::MatrixXd& jacobian)
+{
+	::Eigen::VectorXd params_original(params);
+
+	double epsilon = 0.000001;
+	double invEpsilon = 1.0/epsilon;
+	double error_perturbed = 0;
+	
+	for(int i = 0; i < params.size(); ++i)
+	{
+		params[i] += epsilon;
+		*(robot->GetFreeParameters()[i]) = params[i];
+		error_perturbed = ComputeErrorOnDatasetShape(robot, kinematics, dataset);
+		jacobian(i) = (error_perturbed - error_original) * invEpsilon;
+		params[i] = params_original[i];
+		*(robot->GetFreeParameters()[i]) = params[i];
+	}
+
+}
 
 //void testSVMClassifier()
 //{
