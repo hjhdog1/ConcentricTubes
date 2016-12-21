@@ -118,7 +118,11 @@ void parseXML()
 	TiXmlHandle hRoot(0);
 
 	// parse all measurements
-	pElem=hDoc.FirstChildElement("Measurement").Element();
+	TiXmlElement* pElemRoot ;
+	pElemRoot = hDoc.FirstChildElement().Element();
+	hRoot = TiXmlHandle(pElem);
+
+	pElem = hRoot.FirstChildElement("Measurement").Element();
 	char buffer[100];
 	double s, x, y, z;
 	int measurmentCounter = 0; 
