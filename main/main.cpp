@@ -79,7 +79,7 @@ void fitMechanicsBasedKinematicsShape()
 	
 	// load training data
 	ShapeDataset dataset;
-	BuildShapeDatasetFromString("measurements.xml", dataset);
+	BuildShapeDatasetFromString("shape_training.xml", dataset);
 	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
 
 	// build the robot
@@ -166,13 +166,18 @@ double ComputeSingleShapeError(CTR* robot, MechanicsBasedKinematics* kinematics,
 {
 	double rotation[3] = {0};
 	double translation[3] = {0};
+	double* relativeConf = new double[5];
 
-	memcpy(rotation, meas.GetConfiguration().data(), sizeof(double) * 3);
-	memcpy(translation, &meas.GetConfiguration().data()[3], sizeof(double) * 3);
+	memcpy(relativeConf, meas.GetConfiguration().data(), sizeof(double) * 5);
+	relativeConf[0] *= M_PI/180.0;
+	relativeConf[1] *= M_PI/180.0;
+	relativeConf[3] *= M_PI/180.0;
 
 	::std::vector<::Eigen::Vector3d> positionsAlongRobotExp = meas.GetShapeEig();
 	::std::vector<::Eigen::Vector3d> positionsAlongRobotModel;
 	::Eigen::Vector3d error;
+
+	MechanicsBasedKinematics::RelativeToAbsolute(robot, relativeConf, rotation, translation);
 
 	::std::vector<double> robot_length_parameter = meas.GetArcLength();
 
