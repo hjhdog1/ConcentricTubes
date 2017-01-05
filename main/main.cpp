@@ -79,7 +79,7 @@ void fitMechanicsBasedKinematicsShape()
 	
 	// load training data
 	ShapeDataset dataset;
-	BuildShapeDatasetFromString("shape_training.xml", dataset);
+	BuildShapeDatasetFromString("shape_training2.xml", dataset);
 	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
 
 	// build the robot
