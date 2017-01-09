@@ -35,11 +35,14 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 	//tube3.AddSection(straightSection);
 	//tube3.AddSection(sec2oftube3);
 
+	double* poissonRatio = new double;
+	*poissonRatio = 0.3;
 
 	double precurv[3] = {0.0, 1.0/265.0, 0.0};
 	Section sec1oftube1(150.0, precurv);
 	double k1 = 1.0;
-	Tube tube1(k1, nu);
+	//Tube tube1(k1, nu);
+	Tube tube1(k1, poissonRatio);
 	tube1.AddSection(sec1oftube1);
 
 
@@ -49,7 +52,8 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 	precurv[1] = 1.0/265.0;
 	double k2 = 1.0;
 	Section sec2oftube2(150.0,precurv);
-	Tube tube2(k2, nu);
+	//Tube tube2(k2, nu);
+	Tube tube2(k2, poissonRatio);
 	tube2.AddSection(straightSection);
 	tube2.AddSection(sec2oftube2);
 
@@ -58,7 +62,8 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 	straightSection.sectionLength = 34.0 + 150.0;
 	precurv[1] = 1.0/55.0;
 	Section sec2oftube3(86.3938, precurv);
-	Tube tube3((k1 + k2)/7.0, nu);
+	//Tube tube3((k1 + k2)/7.0, nu);
+	Tube tube3((k1 + k2)/7.0, poissonRatio);
 	tube3.AddSection(straightSection);
 	tube3.AddSection(sec2oftube3);
 
@@ -82,6 +87,8 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 		robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2) );
 		//robot->variances.push_back(1.0e-13);
 	}
+	// add poisson ratio
+	robot->freeParameters.push_back(poissonRatio);
 	/////////////////////////////////////
 
 	return robot;

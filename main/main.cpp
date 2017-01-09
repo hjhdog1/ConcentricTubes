@@ -85,8 +85,10 @@ void fitMechanicsBasedKinematicsShape()
 	// build the robot
 	CTR* robot = CTRFactory::buildCTR("");
 	::std::vector<double*> parameters = robot->GetFreeParameters();
-	::Eigen::VectorXd params(5);
-	for(int i = 0; i < 5; ++i)
+	int numParameters = parameters.size();
+
+	::Eigen::VectorXd params(numParameters);
+	for(int i = 0; i < numParameters; ++i)
 		params(i) = *parameters[i];
 
 	// initialize mechanics-based kinematics
@@ -99,7 +101,7 @@ void fitMechanicsBasedKinematicsShape()
 	int max_iterations = 1000;
 
 	int iter = 0;
-	::Eigen::MatrixXd error_jacobian(5,1);
+	::Eigen::MatrixXd error_jacobian(parameters.size(),1);
 	
 	double step = 0.00001;
 	
