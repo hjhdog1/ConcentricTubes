@@ -82,13 +82,17 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 			robot->freeParameters.push_back(&robot->tubes[i].kxy);
 			robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2) );
 		}
-
 		robot->freeParameters.push_back(&robot->tubes[i].sections.back().precurvature[1]);
 		robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2) );
+
+		robot->freeParameters.push_back(&robot->tubes[i].sections.back().precurvature[0]);
+		robot->variances.push_back(*robot->variances.end());
+
 		//robot->variances.push_back(1.0e-13);
 	}
 	// add poisson ratio
 	robot->freeParameters.push_back(poissonRatio);
+	robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2) );
 	/////////////////////////////////////
 
 	return robot;

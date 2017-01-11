@@ -75,8 +75,8 @@ int main()
 
 void fitMechanicsBasedKinematicsShape()
 {
-	::std::ofstream os("C:/Users/RC/Dropbox/parameters.txt");
-	
+	::std::ofstream os("C:/Users/RC/Dropbox/parameters_continue.txt");
+	 
 	// load training data
 	ShapeDataset dataset;
 	BuildShapeDatasetFromString("shape_training2.xml", dataset);
@@ -88,8 +88,15 @@ void fitMechanicsBasedKinematicsShape()
 	int numParameters = parameters.size();
 
 	::Eigen::VectorXd params(numParameters);
+	//for(int i = 0; i < numParameters; ++i)
+	//	params(i) = *parameters[i];
+
+	double converged_parameters[9] = {0.00376564, -0.000464465, 1.03463, 0.00360212, -0.000307463, 0.318398, 0.0181534, 1.64188e-005, 0.334466};
 	for(int i = 0; i < numParameters; ++i)
+	{
+		*parameters[i] = converged_parameters[i];
 		params(i) = *parameters[i];
+	}
 
 	// initialize mechanics-based kinematics
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot,100);
@@ -98,18 +105,18 @@ void fitMechanicsBasedKinematicsShape()
 	double error_prev = 0.0;
 
 	double tolerance = 0.00001;
-	int max_iterations = 1000;
+	int max_iterations = 10000;
 
 	int iter = 0;
 	::Eigen::MatrixXd error_jacobian(parameters.size(),1);
 	
-	double step = 0.00001;
+	double step = 0.000005;
 	
 	double mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset);
 
 	::std::cout << mean_error << ::std::endl;
 
-	double scale_factor = 100;
+	double scale_factor[9] = {100, 100, 1, 100, 100, 1, 100, 100, 1};
 
 	// loop until convergence
 	clock_t start = clock();
@@ -122,8 +129,8 @@ void fitMechanicsBasedKinematicsShape()
 		ComputeErrorJacobianShape(params, robot, kinematics, dataset, mean_error, error_jacobian);
 
 		// update parameters
-		for(int i = 0; i < 5; i+=2)
-			error_jacobian(i)/= scale_factor * scale_factor;
+		for(int i = 0; i < numParameters; i++)
+			error_jacobian(i)/= scale_factor[i] * scale_factor[i];
 		params -= step * error_jacobian;
 		
 		// update robot based on updated parameters
