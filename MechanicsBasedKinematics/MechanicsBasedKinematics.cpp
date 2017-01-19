@@ -330,7 +330,7 @@ bool MechanicsBasedKinematics::solveBVP (Eigen::MatrixXd& solution)
 		
 	}
 
-	//std::cout << "BVP Failed!" <<std::endl;
+	std::cout << "BVP Failed!" <<std::endl;
 	return false;
 }
 
