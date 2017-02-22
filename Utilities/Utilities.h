@@ -159,3 +159,24 @@ template <typename T>
 
 	return convert.str();
 }
+
+template <typename T>
+::std::string vector_to_string(const ::std::vector<T>& vec)
+{
+	::stringstream ss;
+	for (int i = 0; i < vec.size(); ++i)
+		ss << vec[i] << " ";
+
+	return ss.str();
+}
+
+template <typename T>
+vector<T> linspace(T a, T b, size_t N) {
+  T h = (b - a) / static_cast<T>(N-1);
+  vector<T> xs(N);
+  typename vector<T>::iterator x;
+  T val;
+  for (x = xs.begin(), val = a; x != xs.end(); ++x, val += h)
+    *x = val;
+  return xs;
+}

@@ -173,7 +173,7 @@ void MechanicsBasedKinematics::GetRobotShape(const ::std::vector<double>& svecto
 {
 	::std::vector<SE3> bishopFramesLocal;
 	GetBishopFrame(svector, bishopFramesLocal);
-
+	points.clear();
 	for(::std::vector<SE3>::iterator it = bishopFramesLocal.begin(); it != bishopFramesLocal.end(); ++it)
 		points.push_back(Vec3ToEigen(it->GetPosition()));
 }
@@ -765,4 +765,17 @@ void MechanicsBasedKinematics::RelativeToAbsolute(const CTR* const robot, const 
 	translation[1] = -collarLength + translation[0];
 	translation[2] = relativeConf[2] + translationLowerLimit;
 
+}
+
+// This is not really general for any robot. It assumes a 3-tube robot whose first two tubes form a balanced pair
+void MechanicsBasedKinematics::AbsoluteToRelative(const CTR* const robot, const double rotation[], const double translation[], double conf[])
+{
+	int numOfTubes = robot->GetNumOfTubes();
+	double translationLowerLimit = robot->GetLowerTubeJointLimits()[numOfTubes - 1];
+
+	conf[0] = rotation[1] - rotation[0];
+	conf[1] = rotation[2] - rotation[0];
+	conf[2] = translation[2] - translationLowerLimit;
+	conf[3] = rotation[0];
+	conf[4] = translation[0];
 }

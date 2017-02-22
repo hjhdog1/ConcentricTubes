@@ -43,7 +43,7 @@ public:
 	void printBishopFrame(string filename = "../frame.txt") const;
 	void ActivateIVPJacobian() {this->isUsingIVPJacobian = true;};
 	static void RelativeToAbsolute(const CTR* const robot, const double* const& relativeConf, double* const &rotation, double* const &translation);
-
+	static void AbsoluteToRelative(const CTR* const robot, const double rotation[], const double translation[], double conf[]);
 
 private:
 	bool updateConfiguration (double* rotation, double* translation);

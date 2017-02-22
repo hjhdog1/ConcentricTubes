@@ -130,6 +130,23 @@ Measurement::SetArcLength(const ::std::vector<double>& s)
 	this->arcLength = s;
 }
 
+
+void
+Measurement::SetShape(const ::std::vector<::Eigen::Vector3d>& points)
+{
+	Point point;
+	::std::vector<Point> tmp_points;
+	for(int i = 0; i < points.size(); ++i)
+	{
+		point.SetPointCoords(points[i].data());
+		tmp_points.push_back(point);
+	}
+
+	this->SetShape(tmp_points);
+
+}
+
+
 ::std::ostream& 
 operator << (::std::ostream& os, Measurement& meas)
 {
@@ -218,5 +235,48 @@ void BuildShapeDatasetFromString(const char* filename, ShapeDataset& dataset)
 		dataset.push_back(tmp);
 	}
 	
+}
+
+void ShapeDatasetToString(ShapeDataset& dataset, const char* filename)
+{
+	TiXmlDocument doc;  
+	TiXmlElement* experiment = new TiXmlElement("experiment");
+	for (int i = 0; i < dataset.size(); ++i)
+		AppendMeasurement(experiment, dataset[i]);
+
+	doc.LinkEndChild(experiment);
+	//dump_to_stdout( &doc );
+	doc.SaveFile(filename);  
+}
+
+void AppendMeasurement(TiXmlElement* root, Measurement& meas)
+{
+	TiXmlElement* measurement = new TiXmlElement( "Measurement" );  
+
+	TiXmlElement* configuration = new TiXmlElement("Configuration"); 
+	::std::vector<double> conf = meas.GetConfiguration();
+	TiXmlText* confText = new TiXmlText(vector_to_string(conf).c_str());
+	configuration->LinkEndChild(confText);
+	measurement->LinkEndChild(configuration);
+
+	TiXmlElement* shape = new TiXmlElement("Shape");
+
+	TiXmlElement point("Point");
+
+	::std::vector<Point> points = meas.GetShape();
+	::std::vector<double> arcLength = meas.GetArcLength();
+	double coordinates[3];
+	for (int i = 0; i < points.size(); ++i)
+	{
+		point.SetDoubleAttribute("s", arcLength[i]);
+		points[i].GetPointCoords(coordinates);
+		point.SetDoubleAttribute("x", coordinates[0]);
+		point.SetDoubleAttribute("y", coordinates[1]);
+		point.SetDoubleAttribute("z", coordinates[2]);
+		shape->InsertEndChild(point);
+	}
+	measurement->LinkEndChild(shape);
+	root->LinkEndChild(measurement);
+
 }
 

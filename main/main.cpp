@@ -26,7 +26,10 @@
 
 typedef ::std::vector<::std::vector<double>> DoubleVec;
 
+bool computeJacobian(MechanicsBasedKinematics& kinematics, CTR* robot, double configuration[], ::Eigen::MatrixXd& J);
+void computeConditionNumber();
 void testSimulator();
+void testRigidBodyRotation();
 void testUKF();
 void testFreeParameters();
 void testCTR();
@@ -56,6 +59,10 @@ void unscaleVector(::Eigen::VectorXd& x, double scalingFactors[]);
 void unscaleVector(double x[], int x_size, double scalingFactors[]);
 void scaleVector(::Eigen::VectorXd& x, double scalingFactors[]);
 void scaleVector(double x[], int x_size, double scalingFactors[]);
+void validateModel();
+void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& configurations);
+void recordSample(double configuration[], double manipulabilityMeasure, ::std::ofstream& os);
+void createShapeDataset();
 
 // tinyXML test
 void testTinyXML();
@@ -68,18 +75,253 @@ int main()
 	//fitMechanicsBasedKinematics();
 	//testTinyXML();
 	//testShapeDataset();
-	fitMechanicsBasedKinematicsShape();
-
+	//fitMechanicsBasedKinematicsShape();
+	//testRigidBodyRotation();
+	//validateModel();
+	//computeConditionNumber();
+	createShapeDataset();
+	
 	return 0;
+}
+
+void createShapeDataset()
+{
+	// build the robot
+	CTR* robot = CTRFactory::buildCTR("");
+
+	::std::vector<double* > configurations;
+	GenerateSamples(robot, 41, configurations);
+	
+	::std::cout << "Generated " << configurations.size() << " configurations"  << ::std::endl;
+
+	MechanicsBasedKinematics kinematics(robot,100);
+	kinematics.ActivateIVPJacobian();
+
+	ShapeDataset dataset;
+	Measurement meas;
+
+	// TODO-initialize arclength
+	::std::vector<double> arcLength;
+	
+	::std::vector<::Eigen::Vector3d> points;
+
+	double relative_configuration[5];
+
+
+	for (int i = 0; i < configurations.size(); ++i)
+	{
+
+		kinematics.ComputeKinematics(&configurations[i][0], &configurations[i][3]);
+		arcLength = linspace(0.0, robot->GetLength(), 100);
+		kinematics.GetRobotShape(arcLength, points);
+		MechanicsBasedKinematics::AbsoluteToRelative(robot, &configurations[i][0], &configurations[i][3], relative_configuration);
+		::std::vector<double> rel_conf(relative_configuration, relative_configuration + 5);		
+
+		meas.SetArcLength(arcLength);
+		meas.SetConfiguration(rel_conf);
+		meas.SetShape(points);
+
+		dataset.push_back(meas);
+		
+		if (i  % 1000 == 0)
+			::std::cout << (double) i/((double) configurations.size()) << "% completed" << ::std::endl;
+
+	}
+	ShapeDatasetToString(dataset, "C:/Users/RC/Dropbox/shapes.xml");
+
+}
+
+void computeConditionNumber()
+{
+	::std::ofstream os("C:/Users/RC/Dropbox/determinant.txt");
+
+	// build the robot
+	CTR* robot = CTRFactory::buildCTR("");
+
+	::std::vector<double* > configurations;
+	GenerateSamples(robot, 40, configurations);
+	
+	::std::cout << "Generated " << configurations.size() << " configurations"  << ::std::endl;
+
+	MechanicsBasedKinematics kinematics(robot,100);
+	kinematics.ActivateIVPJacobian();
+
+	double condition_number = 0;
+	double determinant = 0;
+	::Eigen::MatrixXd J;
+	::Eigen::VectorXd singularValues;
+	::Eigen::MatrixXd JTemp;
+	for (int i = 0; i < configurations.size(); ++i)
+	{
+
+		if (computeJacobian(kinematics, robot, configurations[i], J))
+		{
+			//::Eigen::JacobiSVD<::Eigen::MatrixXd> svd(J * J.transpose(), ::Eigen::ComputeThinU | ::Eigen::ComputeThinV);
+			//singularValues = svd.singularValues();
+			//condition_number = singularValues[0]/singularValues[singularValues.size() - 1];
+			double tmp_conf[5] = {0};
+			JTemp = J*J.transpose();
+			determinant = JTemp.determinant();
+			MechanicsBasedKinematics::AbsoluteToRelative(robot, &configurations[i][0], &configurations[i][3], tmp_conf);
+			//recordSample(tmp_conf, condition_number, os);
+			recordSample(tmp_conf, determinant, os);
+		}
+
+		if (i  % 1000 == 0)
+			::std::cout << (double) i/((double) configurations.size()) << "% completed" << ::std::endl;
+
+	}
+	os.close();
+}
+
+void recordSample(double configuration[], double manipulabilityMeasure, ::std::ofstream& os)
+{
+
+	for(int i = 0; i < 5; ++i)
+		os << configuration[i]  << " ";
+	
+	os << manipulabilityMeasure << ::std::endl;
+}
+
+bool computeJacobian(MechanicsBasedKinematics& kinematics, CTR* robot, double configuration[], ::Eigen::MatrixXd& J)
+{
+	double scale[5] = {1, 1, 10, 1, 10};
+	J.resize(3,5);
+
+	double rotation[3] = {0};
+	double translation[3] = {0};
+	memcpy(rotation, configuration, 3 * sizeof(double));
+	memcpy(translation, &configuration[3], 3 * sizeof(double));
+
+	double confOriginal[5] = {0};
+	MechanicsBasedKinematics::AbsoluteToRelative(robot, rotation, translation, confOriginal);
+
+	double configurationPerturbed[5] = {0};
+	memcpy(configurationPerturbed, confOriginal, 5 * sizeof(double));
+
+	//MechanicsBasedKinematics::RelativeToAbsolute(robot, configuration, rotation, translation);
+	if(!kinematics.ComputeKinematics(rotation, translation))
+		return false;
+
+	::Eigen::Vector3d fOriginal, fPerturbed;
+	kinematics.GetTipPosition(fOriginal);
+	
+	double epsilon = 0.0001;
+	int counter = 0;
+	for (int i = 0; i < 5; ++i)
+	{
+		
+		configurationPerturbed[i] += epsilon * scale[i];
+		MechanicsBasedKinematics::RelativeToAbsolute(robot, configurationPerturbed, rotation, translation);
+		if (!kinematics.ComputeKinematics(rotation, translation))
+			return false;
+		
+		kinematics.GetTipPosition(fPerturbed);
+		J.col(i) = (fPerturbed - fOriginal)/(epsilon * scale[i]);
+		configurationPerturbed[i] = confOriginal[i];
+	}
+	return true;
+}
+
+void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& configurations)
+{
+	double stepRotation = 2 * M_PI/(numOfPointsPerDim - 1);
+	
+	double epsilon = 0.01;
+	double collarLength = robot->GetTubes()[0].GetCollarLength();
+	double translationLowerLimit = robot->GetLowerTubeJointLimits()[2] + epsilon;
+	double translationUpperLimit = robot->GetUpperTubeJointLimits()[2] - epsilon;
+	double stepTranslation = (translationUpperLimit - translationLowerLimit)/(numOfPointsPerDim - 1);
+	
+	double initialConfiguration[6] = {0, -1.0 * M_PI, -1.0 * M_PI, 0, -collarLength, translationLowerLimit};
+
+	double* configuration = new double[6];
+
+	for (int i = 0; i < numOfPointsPerDim; ++i)
+	{
+		for(int j = 0; j < numOfPointsPerDim; ++j)
+		{
+			for(int k = 0; k < numOfPointsPerDim; ++k)
+			{
+				double* configurationTmp = new double[6];
+				memcpy(configurationTmp, initialConfiguration, sizeof(double) * 6);
+				
+				configurations.push_back(configurationTmp);
+
+				initialConfiguration[5] += stepTranslation;
+			}
+			initialConfiguration[5] = translationLowerLimit;
+			initialConfiguration[2] += stepRotation;
+		}
+		initialConfiguration[2] = -M_PI;
+		initialConfiguration[1] += stepRotation;
+	}
+}
+
+
+void validateModel()
+{
+	// load training data
+	ShapeDataset dataset;
+	BuildShapeDatasetFromString("validation_dithering_100confs.xml", dataset);
+	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
+
+	// build the robot
+	CTR* robot = CTRFactory::buildCTR("");
+	::std::vector<double*> parameters = robot->GetFreeParameters();
+	int numParameters = parameters.size();
+	
+	double converged_parameters[9] = {0.0037814, -2.60007e-005, 1.00812, 0.00447335, -0.000280161, 0.264503, 0.0181663, 4.13837e-007, 0.299955};
+	for(int i = 0; i < numParameters; ++i)
+		*parameters[i] = converged_parameters[i];
+
+	// initialize mechanics-based kinematics
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot,100);
+	kinematics->ActivateIVPJacobian();
+
+	double mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset);
+
+	::std::cout << "mean_error:"  << mean_error << ::std::endl;
+
+}
+
+
+void testRigidBodyRotation()
+{
+	CTR* robot = CTRFactory::buildCTR("");
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot);
+	double configuration[5] = {0, 0, 85, 0, 0};
+
+	double rotation[3] = {0};
+	double translation[3] = {0};
+	MechanicsBasedKinematics::RelativeToAbsolute(robot, configuration, rotation, translation);
+	kinematics->ComputeKinematics(rotation, translation);
+
+	::Eigen::Vector3d position;
+	kinematics->GetTipPosition(position);
+
+	SE3 bFrame;
+	::Eigen::Matrix3d tmp;
+	kinematics->GetBishopFrame(bFrame);
+	SO3ToEigen(bFrame.GetOrientation(), tmp);
+	::std::cout <<  tmp << ::std::endl;
+
+	configuration[3] += M_PI;
+	MechanicsBasedKinematics::RelativeToAbsolute(robot, configuration, rotation, translation);
+	kinematics->ComputeKinematics(rotation, translation);
+
+	kinematics->GetBishopFrame(bFrame);
+	SO3ToEigen(bFrame.GetOrientation(), tmp);
+	::std::cout <<  tmp << ::std::endl;
 }
 
 void fitMechanicsBasedKinematicsShape()
 {
-	::std::ofstream os("C:/Users/RC/Dropbox/parameters_continue.txt");
+	::std::ofstream os("C:/Users/RC/Dropbox/parameters_0213_continue.txt");
 	 
 	// load training data
 	ShapeDataset dataset;
-	BuildShapeDatasetFromString("shape_training_failed_configurations_excluded.xml", dataset);
+	BuildShapeDatasetFromString("dithering_100confs.xml", dataset);
 	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
 
 	// build the robot
@@ -91,12 +333,12 @@ void fitMechanicsBasedKinematicsShape()
 	for(int i = 0; i < numParameters; ++i)
 		params(i) = *parameters[i];
 
-	//double converged_parameters[9] = {0.00376564, -0.000464465, 1.03463, 0.00360212, -0.000307463, 0.318398, 0.0181534, 1.64188e-005, 0.334466};
-	//for(int i = 0; i < numParameters; ++i)
-	//{
-	//	*parameters[i] = converged_parameters[i];
-	//	params(i) = *parameters[i];
-	//}
+	double converged_parameters[9] = {0.00378454, -2.3372e-005, 1.0089, 0.00445903, -0.000271433, 0.26651, 0.0181703, 7.13975e-007, 0.299975};
+	for(int i = 0; i < numParameters; ++i)
+	{
+		*parameters[i] = converged_parameters[i];
+		params(i) = *parameters[i];
+	}
 
 	// initialize mechanics-based kinematics
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot,100);
@@ -110,7 +352,7 @@ void fitMechanicsBasedKinematicsShape()
 	int iter = 0;
 	::Eigen::MatrixXd error_jacobian(parameters.size(),1);
 	
-	double step = 0.0005;
+	double step = 0.000005;
 	
 	double mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset);
 
@@ -215,6 +457,8 @@ void testShapeDataset()
 		::std::cout << "Measurement:" << i << ::std::endl;
 		::std::cout << dataset[i] << ::std::endl;
 	}
+
+	ShapeDatasetToString(dataset, "george.xml");
 }
 
 void composeXML()
@@ -682,7 +926,7 @@ void fitMechanicsBasedKinematics()
 	::std::ofstream os("C:/Users/RC/Dropbox/parameters.txt");
 	// load training data
 	//::std::vector< ::std::string> dataStr = ReadLinesFromFile("./2016-10-06-09-46-43_record_joint.txt");
-	::std::vector< ::std::string> dataStr = ReadLinesFromFile("./test_fitting.txt");
+	::std::vector< ::std::string> dataStr = ReadLinesFromFile("./fitting.txt");
 	::std::vector< ::std::vector< double>> data_in, data_out;
 
 	// load model with initial parameters
@@ -843,7 +1087,7 @@ void ComputeErrorJacobianShape(::Eigen::VectorXd& params, CTR* robot, MechanicsB
 {
 	::Eigen::VectorXd params_original(params);
 
-	double epsilon = 0.000001;
+	double epsilon = 0.0001;
 	double invEpsilon = 1.0/epsilon;
 	double error_perturbed = 0;
 	
@@ -1155,4 +1399,5 @@ void testKinematicsSingleConfiguration()
 
 	_sleep(10000);
 }
+
 

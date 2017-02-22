@@ -16,6 +16,7 @@ void GenerateRandomConfigurations(int num = 100);
 
 void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& configurations);
 void RecordTrainingSample(MechanicsBasedKinematics* kinematics, CTR* robot, double* configuration, ::std::ofstream& os);
+void RecordTrainingSample(MechanicsBasedKinematics* kinematics ,CTR* robot, double* configuration, ::std::ofstream& os);
 void TestJointAnglesConversion();
 void ExampleCameraRotationComputation();
 void TestInverseKinematics();
@@ -23,8 +24,8 @@ void TestInverseKinematics();
 int _tmain(int argc, _TCHAR* argv[])
 {
 	//for (int i = 5; i < 22; i++)
-	//	GenerateTrainingData(i);
-	GenerateRandomConfigurations(100);
+	GenerateTrainingData(40);   
+	//GenerateRandomConfigurations(100);
 	//TestJointAnglesConversion();
 	//ExampleCameraRotationComputation();
 	//TestInverseKinematics();

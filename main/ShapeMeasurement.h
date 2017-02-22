@@ -2,6 +2,8 @@
 #include <vector>
 #include "Eigen/Dense"
 
+class TiXmlElement;
+class TiXmlNode;
 
 class Point
 {
@@ -39,6 +41,8 @@ public:
 
 	::std::vector<Point> GetShape() const;
 	::std::vector<::Eigen::Vector3d> GetShapeEig() const;
+
+	void SetShape(const ::std::vector<::Eigen::Vector3d>& points);
 	void SetShape(const ::std::vector<Point>& shape);
 
 	::std::vector<double> GetArcLength() const;
@@ -52,3 +56,9 @@ public:
 typedef ::std::vector<Measurement> ShapeDataset;
 
 void BuildShapeDatasetFromString(const char* filename, ShapeDataset& dataset);
+
+void ShapeDatasetToString(ShapeDataset& dataset, const char* filename);
+
+void AppendMeasurement(TiXmlElement* root, Measurement& meas);
+
+
