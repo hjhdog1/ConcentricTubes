@@ -76,9 +76,9 @@ int main()
 	//fitMechanicsBasedKinematics();
 	//testTinyXML();
 	//testShapeDataset();
-	//fitMechanicsBasedKinematicsShape();
+	fitMechanicsBasedKinematicsShape();
 	//testRigidBodyRotation();
-	validateModel();
+	//validateModel();
 	//computeConditionNumber();
 	//createShapeDataset();
 	
@@ -356,11 +356,11 @@ void testRigidBodyRotation()
 
 void fitMechanicsBasedKinematicsShape()
 {
-	::std::ofstream os("C:/Users/RC/Dropbox/parameters_0213_continue.txt");
+	::std::ofstream os("C:/Users/RC/Dropbox/parameters_dithered_full.txt");
 	 
 	// load training data
 	ShapeDataset dataset;
-	BuildShapeDatasetFromString("dithering_100confs.xml", dataset);
+	BuildShapeDatasetFromString("validation_dithered_full.xml", dataset);
 	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
 
 	// build the robot
@@ -372,12 +372,12 @@ void fitMechanicsBasedKinematicsShape()
 	for(int i = 0; i < numParameters; ++i)
 		params(i) = *parameters[i];
 
-	double converged_parameters[9] = {0.0037814, -2.60007e-005, 1.00812, 0.00447335, -0.000280161, 0.264503, 0.0181663, 4.13837e-007, 0.299955};
-	for(int i = 0; i < numParameters; ++i)
-	{
-		*parameters[i] = converged_parameters[i];
-		params(i) = *parameters[i];
-	}
+	//double converged_parameters[9] = {0.0037814, -2.60007e-005, 1.00812, 0.00447335, -0.000280161, 0.264503, 0.0181663, 4.13837e-007, 0.299955};
+	//for(int i = 0; i < numParameters; ++i)
+	//{
+	//	*parameters[i] = converged_parameters[i];
+	//	params(i) = *parameters[i];
+	//}
 
 	// initialize mechanics-based kinematics
 	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot,100);
@@ -386,7 +386,7 @@ void fitMechanicsBasedKinematicsShape()
 	double error_prev = 0.0;
 
 	double tolerance = 0.00001;
-	int max_iterations = 1000;
+	int max_iterations = 10000;
 
 	int iter = 0;
 	::Eigen::MatrixXd error_jacobian(parameters.size(),1);
@@ -445,15 +445,25 @@ void fitMechanicsBasedKinematicsShape()
 double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset, double& max_error)
 {
 	double error = 0.0;
+	double tmp = 0.0;
 	double max_error_current = 0.0;
+	int counter = 0;
 	for (int i = 0; i < dataset.size(); ++i)
 	{
-		error += ComputeSingleShapeError(robot, kinematics, dataset[i], max_error_current);
+		tmp = ComputeSingleShapeError(robot, kinematics, dataset[i], max_error_current);
+		if (tmp < 0)
+			continue;
+		else
+		{
+			error += tmp;
+			counter++;
+		}
+
 		if (max_error_current > max_error)
 			max_error = max_error_current;
 	}
 
-	return error/dataset.size();
+	return error/counter;
 }
 
 
@@ -476,20 +486,23 @@ double ComputeSingleShapeError(CTR* robot, MechanicsBasedKinematics* kinematics,
 
 	::std::vector<double> robot_length_parameter = meas.GetArcLength();
 
-	kinematics->ComputeKinematics(rotation, translation);
+	if(!kinematics->ComputeKinematics(rotation, translation))
+		return -1.0;
 	kinematics->GetRobotShape(robot_length_parameter, positionsAlongRobotModel);
 
 	double sum = 0;
 	max_error_current = 0;
-	for(int i = 0; i < positionsAlongRobotModel.size(); ++i)
-	{
-		error = positionsAlongRobotExp[i] - positionsAlongRobotModel[i];
-		if (error.norm() > max_error_current)
-			max_error_current = error.norm();
-		sum += error.norm();
-	}
+	//for(int i = 0; i < positionsAlongRobotModel.size(); ++i)
+	//{
+	//	error = positionsAlongRobotExp[i] - positionsAlongRobotModel[i];
+	//	if (error.norm() > max_error_current)
+	//		max_error_current = error.norm();
+	//	sum += error.norm();
+	//}
 
-	return sum/positionsAlongRobotModel.size();
+	//return sum/positionsAlongRobotModel.size();
+	error = positionsAlongRobotExp[positionsAlongRobotExp.size() - 1] - positionsAlongRobotModel[positionsAlongRobotModel.size() - 1];
+	return error.norm();
 }
 
 void testShapeDataset()
