@@ -21,9 +21,15 @@
     <ClCompile Include="ShapeMeasurement.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CTRCalibration.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ShapeMeasurement.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CTRCalibration.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

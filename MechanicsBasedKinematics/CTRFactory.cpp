@@ -88,7 +88,7 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 		robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2) );
 
 		robot->freeParameters.push_back(&robot->tubes[i].sections.back().precurvature[0]);
-		robot->variances.push_back(*robot->variances.end());
+		robot->variances.push_back(*(--robot->variances.end()));
 
 		//robot->variances.push_back(1.0e-13);
 	}

@@ -12,6 +12,7 @@
 #include <ctime>
 #include <tinyxml.h>
 #include "ShapeMeasurement.h"
+#include "CTRCalibration.h"
 //#include <opencv2/core.hpp>
 //#include <opencv2/imgproc.hpp>
 //#include "opencv2/imgcodecs.hpp"
@@ -20,6 +21,9 @@
 #define pi M_PI
 // timer
 #include <ctime>
+
+// mkdir
+#include <direct.h>
 
 //using namespace cv;
 //using namespace cv::ml;
@@ -38,11 +42,11 @@ void testKinematics();
 void testKinematicsSingleConfiguration();
 void testSVMClassifier();
 void fitMechanicsBasedKinematics();
-void fitMechanicsBasedKinematicsShape();
+CTR* fitMechanicsBasedKinematicsShape(char* inputXml, char* outputTxt);
 double ComputeErrorOnDataset(CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out);
 double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset, double& max_error);
 void ComputeErrorJacobian(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, DoubleVec& data_in, DoubleVec& data_out,  double error_original,::Eigen::MatrixXd& jacobian);
-void ComputeErrorJacobianShape(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset, double error_original, ::Eigen::MatrixXd& jacobian);
+void ComputeErrorJacobianShape(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset, double error_original, ::Eigen::MatrixXd& jacobian, double* scale_factor = NULL);
 void preprocessData(CTR* robot,::std::vector<::std::string>& dataStr, DoubleVec& data_in, DoubleVec& data_out);
 void evaluateModel();
 double ComputeSingleShapeError(CTR* robot, MechanicsBasedKinematics* kinematics, const Measurement& meas, double& max_error_current);
@@ -60,6 +64,7 @@ void unscaleVector(double x[], int x_size, double scalingFactors[]);
 void scaleVector(::Eigen::VectorXd& x, double scalingFactors[]);
 void scaleVector(double x[], int x_size, double scalingFactors[]);
 void validateModel();
+void validateModel(CTR* robot, char* validationFile);
 void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& configurations);
 void recordSample(double configuration[], double manipulabilityMeasure, ::std::ofstream& os);
 void createShapeDataset();
@@ -76,12 +81,104 @@ int main()
 	//fitMechanicsBasedKinematics();
 	//testTinyXML();
 	//testShapeDataset();
-	fitMechanicsBasedKinematicsShape();
+
+	//// training
+	//mkdir("./parameters");
+	//CTR* robot_dithered = fitMechanicsBasedKinematicsShape("dithered_training_tip.xml", "./parameters/parameters_dithered_tip.txt");
+	////CTR* robot_undithered_alldirections = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_tip.xml", "./parameters/parameters_undithered_tip_alldirections.txt");
+	//CTR* robot_undithered_1st = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_baised1_tip.xml", "./parameters/parameters_undithered_tip_biased1.txt");
+	//CTR* robot_undithered_4th = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_baised4_tip.xml", "./parameters/parameters_undithered_tip_biased4.txt");
+	//CTR* robot_undithered_rand1 = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_rand1_tip.xml", "./parameters/parameters_undithered_tip_rand1.txt");
+	//CTR* robot_undithered_rand2 = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_rand2_tip.xml", "./parameters/parameters_undithered_tip_rand2.txt");
+	//
+	//// validation
+	//::std::cout << "\n" << "/////////======== model: dithered 64 ========/////////" << ::std::endl;
+	//validateModel(robot_dithered, "undithered_validation_tip.xml");
+	////::std::cout << "\n" << "/////////======== model: undithered 256 ========/////////" << ::std::endl;
+	////validateModel(robot_undithered_alldirections, "undithered_validation_tip.xml");
+	//::std::cout << "\n" << "/////////======== model: undithered biased 64 (1st) ========/////////" << ::std::endl;
+	//validateModel(robot_undithered_1st, "undithered_validation_tip.xml");
+	//::std::cout << "\n" << "/////////======== model: undithered biased 64 (4th) ========/////////" << ::std::endl;
+	//validateModel(robot_undithered_4th, "undithered_validation_tip.xml");
+	//::std::cout << "\n" << "/////////======== model: undithered random 64 (1st) ========/////////" << ::std::endl;
+	//validateModel(robot_undithered_rand1, "undithered_validation_tip.xml");
+	//::std::cout << "\n" << "/////////======== model: undithered random 64 (2nd) ========/////////" << ::std::endl;
+	//validateModel(robot_undithered_rand2, "undithered_validation_tip.xml");
+
+
 	//testRigidBodyRotation();
 	//validateModel();
 	//computeConditionNumber();
 	//createShapeDataset();
 	
+	//////////////////////////////////////////////////////////
+	//mkdir("./parameters");
+	//mkdir("./validations");
+	//
+	//CTRCalibration calibration[6];
+
+	//for(int i = 0 ; i < 6; i++)
+	//	calibration[i].SetValidationData("undithered_validation_tip.xml");
+
+	//calibration[0].SetTrainingData("undithered_training_alldirections_tip.xml", 4);
+	//calibration[0].SetOutputFile("./parameters/parameters_undithered_tip_alldirections.txt");
+	//calibration[0].Calibrate();
+	//calibration[0].Validate("./validations/undithered_alldirections.txt");
+
+	//calibration[1].SetTrainingData("dithered_training_tip.xml");
+	//calibration[1].SetOutputFile("./parameters/parameters_dithered_tip.txt");
+	//calibration[1].Calibrate();
+	//calibration[1].Validate("./validations/dithered.txt");
+
+	//calibration[2].SetTrainingData("undithered_training_alldirections_baised1_tip.xml");
+	//calibration[2].SetOutputFile("./parameters/parameters_undithered_tip_biased1.txt");
+	//calibration[2].Calibrate();
+	//calibration[2].Validate("./validations/undithered_biased1.txt");
+
+	//calibration[3].SetTrainingData("undithered_training_alldirections_baised4_tip.xml");
+	//calibration[3].SetOutputFile("./parameters/parameters_undithered_tip_biased4.txt");
+	//calibration[3].Calibrate();
+	//calibration[3].Validate("./validations/undithered_biased4.txt");
+
+	//calibration[4].SetTrainingData("undithered_training_alldirections_rand1_tip.xml");
+	//calibration[4].SetOutputFile("./parameters/parameters_undithered_tip_rand1.txt");
+	//calibration[4].Calibrate();
+	//calibration[4].Validate("./validations/undithered_rand1.txt");
+
+	//calibration[5].SetTrainingData("undithered_training_alldirections_rand2_tip.xml");
+	//calibration[5].SetOutputFile("./parameters/parameters_undithered_tip_rand2.txt");
+	//calibration[5].Calibrate();
+	//calibration[5].Validate("./validations/undithered_rand2.txt");
+	//////////////////////////////////////////////////////////
+
+	//////////////////////////////////////////////////////////
+	//mkdir("./validations");
+
+	//CTRCalibration calibration;
+	//calibration.SetValidationData("undithered_training_alldirections_tip.xml");
+	////double params_double[9] = {0.00356128,   1.6502e-005,       0.99804,    0.00458869,  -0.000101279,      0.247405,     0.0172121, -9.26764e-007,      0.288861};
+
+	////calibration.SetValidationData("dithered_training_tip.xml");
+	//double params_double[9] = {0.00353888, 1.00696e-005,     0.994299,   0.00463028, -0.000108848,     0.255984,    0.0172424, 6.54974e-005,     0.283697};
+	//  
+	//::std::vector<double> params(params_double, params_double+9);
+	//calibration.SetInitParameters(params);
+	//calibration.Validate("./validations/temp.txt");
+	//////////////////////////////////////////////////////////
+
+	//////////////////////////////////////////////////////////
+	mkdir("./parameters");
+
+	CTRCalibration calibration;
+	calibration.SetNumGridPoints(200);
+	calibration.SetMaxIter(10000);
+	calibration.SetTrainingData("dithered_training62_tip.xml");
+	calibration.SetOutputFile("./parameters/parameters_dithered62_tip.txt");
+	calibration.Calibrate();
+	//////////////////////////////////////////////////////////
+
+	::_sleep(100000000);
+
 	return 0;
 }
 
@@ -302,7 +399,8 @@ void validateModel()
 {
 	// load training data
 	ShapeDataset dataset;
-	BuildShapeDatasetFromString("2017_2_15_9_46_13_short_dithering_validation.xml", dataset);
+	//BuildShapeDatasetFromString("dithered_training_tip.xml", dataset);
+	BuildShapeDatasetFromString("undithered_training_tip.xml", dataset);
 	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
 
 	// build the robot
@@ -310,7 +408,8 @@ void validateModel()
 	::std::vector<double*> parameters = robot->GetFreeParameters();
 	int numParameters = parameters.size();
 	
-	double converged_parameters[9] = {0.0037814, -2.60007e-005, 1.00812, 0.00447335, -0.000280161, 0.264503, 0.0181663, 4.13837e-007, 0.299955};
+	//double converged_parameters[9] = {0.00357448, 4.63325e-005,       1.0164,   0.00455987, -0.000323665,     0.264154,    0.0175309, -0.000257567,     0.299775};	// dithered + tip
+	double converged_parameters[9] = {0.0037543,   0.000114552,      0.996123,    0.00408825,  -0.000126495,      0.281973,     0.0181689, -2.92844e-006,      0.299999};	// undithered + tip
 	for(int i = 0; i < numParameters; ++i)
 		*parameters[i] = converged_parameters[i];
 
@@ -320,6 +419,25 @@ void validateModel()
 	double max_error = 0;
 	double mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset, max_error);
 
+	::std::cout << "mean_error:"  << mean_error << ::std::endl;
+	::std::cout << "max_error:" << max_error << ::std::endl;
+}
+
+void validateModel(CTR* robot, char* validationFile)
+{
+	// load training data
+	ShapeDataset dataset;
+	BuildShapeDatasetFromString(validationFile, dataset);
+	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
+
+
+	// initialize mechanics-based kinematics
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot,100);
+	kinematics->ActivateIVPJacobian();
+	double max_error = 0;
+	double mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset, max_error);
+
+	::std::cout << "======== Validation File: "  << validationFile << "========" << ::std::endl;
 	::std::cout << "mean_error:"  << mean_error << ::std::endl;
 	::std::cout << "max_error:" << max_error << ::std::endl;
 }
@@ -354,13 +472,13 @@ void testRigidBodyRotation()
 	::std::cout <<  tmp << ::std::endl;
 }
 
-void fitMechanicsBasedKinematicsShape()
+CTR* fitMechanicsBasedKinematicsShape(char* inputXml, char* outputTxt)
 {
-	::std::ofstream os("C:/Users/RC/Dropbox/parameters_dithered_full.txt");
+	::std::ofstream os(outputTxt);
 	 
 	// load training data
 	ShapeDataset dataset;
-	BuildShapeDatasetFromString("validation_dithered_full.xml", dataset);
+	BuildShapeDatasetFromString(inputXml, dataset);
 	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
 
 	// build the robot
@@ -385,19 +503,22 @@ void fitMechanicsBasedKinematicsShape()
 
 	double error_prev = 0.0;
 
-	double tolerance = 0.00001;
-	int max_iterations = 10000;
+	double tolerance = 0.000000000000001;
+	int max_iterations = 1000;
 
 	int iter = 0;
 	::Eigen::MatrixXd error_jacobian(parameters.size(),1);
 	
-	double step = 0.000005;
+	double step = 0.0001;
 	double dummy = 0.0;
 	double mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset, dummy);
 
 	::std::cout << mean_error << ::std::endl;
 
-	double scale_factor[9] = {100, 100, 1, 100, 100, 1, 100, 100, 10};
+	double scale_factor[9] = {100, 100, 1, 100, 100, 1, 100, 100, 5};
+	//for(int i = 0 ; i < 8; i++)
+	//	scale_factor[i] = 1/(*parameters[i]);
+	//scale_factor[8] = 1/0.6;
 
 	// loop until convergence
 	clock_t start = clock();
@@ -407,23 +528,26 @@ void fitMechanicsBasedKinematicsShape()
 		error_prev = mean_error;
 
 		// compute error jacobian with respect to parameters		
-		ComputeErrorJacobianShape(params, robot, kinematics, dataset, mean_error, error_jacobian);
-
+		ComputeErrorJacobianShape(params, robot, kinematics, dataset, mean_error, error_jacobian, scale_factor);
+		
 		// update parameters
 		for(int i = 0; i < numParameters; i++)
 			error_jacobian(i)/= scale_factor[i] * scale_factor[i];
+		error_jacobian /= error_jacobian.norm();	// JHa - normalize error_jacobian
 		params -= step * error_jacobian;
 		
 		// update robot based on updated parameters
 		for(int i = 0 ; i < parameters.size() ; i++)
 			*parameters[i] = params(i);
-		double dummy = 0;
+		double max_error = 0;
 		// update error
-		mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset, dummy);
+		mean_error = ComputeErrorOnDatasetShape(robot, kinematics, dataset, max_error);
 
 
 		if (mean_error > error_prev)
-			step *= 0.90;
+			step = ::std::max(0.95*step, 0.00005);
+		//else
+		//	step = ::std::min(1.02*step, 0.0005);
 
 		clock_t end  = clock();
 		double duration = (end - start)/(double) CLOCKS_PER_SEC/(double) ++iter;
@@ -434,12 +558,14 @@ void fitMechanicsBasedKinematicsShape()
 		if (iter % 50 == 0)
 		{
 			::std::cout << "intermediate parameter values:" << params.transpose() << ::std::endl;
-			os << params.transpose() << "   " << mean_error << ::std::endl;
+			os << params.transpose() << "   " << mean_error << "	" << max_error << ::std::endl;
 		}
 		
 	}
 	os.close();
 	::std::cout << "Calibrated model parameters:" << params.transpose() << ::std::endl; 
+
+	return robot;
 }
 
 double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset, double& max_error)
@@ -460,7 +586,13 @@ double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinemati
 		}
 
 		if (max_error_current > max_error)
+		{
 			max_error = max_error_current;
+			//::std::cout << "id: " << i << ", conf: ";
+			//for (int k = 0 ; k < 5; k++)
+			//	::std::cout << dataset[i].GetConfiguration()[k] << "	";
+			//::std::cout << ::std::endl;
+		}
 	}
 
 	return error/counter;
@@ -491,7 +623,6 @@ double ComputeSingleShapeError(CTR* robot, MechanicsBasedKinematics* kinematics,
 	kinematics->GetRobotShape(robot_length_parameter, positionsAlongRobotModel);
 
 	double sum = 0;
-	max_error_current = 0;
 	//for(int i = 0; i < positionsAlongRobotModel.size(); ++i)
 	//{
 	//	error = positionsAlongRobotExp[i] - positionsAlongRobotModel[i];
@@ -502,7 +633,8 @@ double ComputeSingleShapeError(CTR* robot, MechanicsBasedKinematics* kinematics,
 
 	//return sum/positionsAlongRobotModel.size();
 	error = positionsAlongRobotExp[positionsAlongRobotExp.size() - 1] - positionsAlongRobotModel[positionsAlongRobotModel.size() - 1];
-	return error.norm();
+	max_error_current = error.norm();
+	return max_error_current;
 }
 
 void testShapeDataset()
@@ -1142,20 +1274,31 @@ void ComputeErrorJacobian(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedK
 
 }
 
-void ComputeErrorJacobianShape(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset, double error_original, ::Eigen::MatrixXd& jacobian)
+void ComputeErrorJacobianShape(::Eigen::VectorXd& params, CTR* robot, MechanicsBasedKinematics* kinematics, const ShapeDataset& dataset, double error_original, ::Eigen::MatrixXd& jacobian, double* scale_factor)
 {
+	static double tempScale[9] = {1,1,1,1,1,1,1,1,1};
+	if(scale_factor == NULL)
+		scale_factor = tempScale;
+
 	::Eigen::VectorXd params_original(params);
 
-	double epsilon = 0.0001;
+	double epsilon = 0.00001;
 	double invEpsilon = 1.0/epsilon;
 	double error_perturbed = 0;
+	double error_perturbed2 = 0;
 	double dummy = 0;
 	for(int i = 0; i < params.size(); ++i)
 	{
-		params[i] += epsilon;
+		double cur_epsilon = epsilon/scale_factor[i];
+		params[i] += cur_epsilon;
 		*(robot->GetFreeParameters()[i]) = params[i];
 		error_perturbed = ComputeErrorOnDatasetShape(robot, kinematics, dataset, dummy);
-		jacobian(i) = (error_perturbed - error_original) * invEpsilon;
+		params[i] = params_original[i];
+		params[i] -= cur_epsilon;
+		*(robot->GetFreeParameters()[i]) = params[i];
+		error_perturbed2 = ComputeErrorOnDatasetShape(robot, kinematics, dataset, dummy);
+		jacobian(i) = (error_perturbed - error_perturbed2) / (2*cur_epsilon);
+		//jacobian(i) = (error_perturbed - error_original) / cur_epsilon;
 		params[i] = params_original[i];
 		*(robot->GetFreeParameters()[i]) = params[i];
 	}

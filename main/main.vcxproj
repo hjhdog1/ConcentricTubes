@@ -76,7 +76,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>tinyxml.lib;lwpr.lib;MechanicsBasedKinematics.lib;Filtering.lib;Simulation.lib;Utilities.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>../$(Configuration); $(OPENCV_DIR)\lib;../Releasetinyxml</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../$(Configuration); $(OPENCV_DIR)\lib;../Debugtinyxml</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -127,10 +127,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CTRCalibration.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ShapeMeasurement.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CTRCalibration.h" />
     <ClInclude Include="ShapeMeasurement.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
