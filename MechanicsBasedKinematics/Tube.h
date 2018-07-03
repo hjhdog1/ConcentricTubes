@@ -27,6 +27,7 @@ public:
 	double GetTubeLength() const {return this->length;};
 	double GetCollarLength() const {return this->collarLength;};
 
+	void SetCollarLength(double collarLength) {this->collarLength = collarLength;};
 
 private:
     void UpdateLength ();

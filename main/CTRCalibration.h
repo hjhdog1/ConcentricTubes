@@ -37,8 +37,8 @@ private:
 	void			ComputeErrorJacobian(::Eigen::MatrixXd& error_jacobian);
 	double			UpdateParams(double stepSize, double& max_error);
 	
-	void			PrintOnConsole(double error, double max_error, int iter, double step);
-	void			PrintInFile(double error, double max_error);
+	void			PrintOnConsole(double error, double max_error, int iter, double step, double error_val = -1);
+	void			PrintInFile(double error, double max_error, double error_val = -1);
 	
 	void			Tic();
 	double			Toc();		// in seconds

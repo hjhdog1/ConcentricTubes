@@ -69,6 +69,7 @@ void GenerateSamples(CTR* robot, int numOfPointsPerDim, ::std::vector<double*>& 
 void recordSample(double configuration[], double manipulabilityMeasure, ::std::ofstream& os);
 void createShapeDataset();
 void GenerateRandomConfigurations(int num, ::std::vector<double*>& confs);
+void MakeHisteresisGraphs();
 
 // tinyXML test
 void testTinyXML();
@@ -76,110 +77,76 @@ void testShapeDataset();
 
 int main()
 {
-	//testOptimizationController();
-	//testOptimizationControllerOnData();
-	//fitMechanicsBasedKinematics();
-	//testTinyXML();
-	//testShapeDataset();
-
-	//// training
-	//mkdir("./parameters");
-	//CTR* robot_dithered = fitMechanicsBasedKinematicsShape("dithered_training_tip.xml", "./parameters/parameters_dithered_tip.txt");
-	////CTR* robot_undithered_alldirections = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_tip.xml", "./parameters/parameters_undithered_tip_alldirections.txt");
-	//CTR* robot_undithered_1st = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_baised1_tip.xml", "./parameters/parameters_undithered_tip_biased1.txt");
-	//CTR* robot_undithered_4th = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_baised4_tip.xml", "./parameters/parameters_undithered_tip_biased4.txt");
-	//CTR* robot_undithered_rand1 = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_rand1_tip.xml", "./parameters/parameters_undithered_tip_rand1.txt");
-	//CTR* robot_undithered_rand2 = fitMechanicsBasedKinematicsShape("undithered_training_alldirections_rand2_tip.xml", "./parameters/parameters_undithered_tip_rand2.txt");
-	//
-	//// validation
-	//::std::cout << "\n" << "/////////======== model: dithered 64 ========/////////" << ::std::endl;
-	//validateModel(robot_dithered, "undithered_validation_tip.xml");
-	////::std::cout << "\n" << "/////////======== model: undithered 256 ========/////////" << ::std::endl;
-	////validateModel(robot_undithered_alldirections, "undithered_validation_tip.xml");
-	//::std::cout << "\n" << "/////////======== model: undithered biased 64 (1st) ========/////////" << ::std::endl;
-	//validateModel(robot_undithered_1st, "undithered_validation_tip.xml");
-	//::std::cout << "\n" << "/////////======== model: undithered biased 64 (4th) ========/////////" << ::std::endl;
-	//validateModel(robot_undithered_4th, "undithered_validation_tip.xml");
-	//::std::cout << "\n" << "/////////======== model: undithered random 64 (1st) ========/////////" << ::std::endl;
-	//validateModel(robot_undithered_rand1, "undithered_validation_tip.xml");
-	//::std::cout << "\n" << "/////////======== model: undithered random 64 (2nd) ========/////////" << ::std::endl;
-	//validateModel(robot_undithered_rand2, "undithered_validation_tip.xml");
-
-
-	//testRigidBodyRotation();
-	//validateModel();
-	//computeConditionNumber();
-	//createShapeDataset();
-	
-	//////////////////////////////////////////////////////////
-	//mkdir("./parameters");
-	//mkdir("./validations");
-	//
-	//CTRCalibration calibration[6];
-
-	//for(int i = 0 ; i < 6; i++)
-	//	calibration[i].SetValidationData("undithered_validation_tip.xml");
-
-	//calibration[0].SetTrainingData("undithered_training_alldirections_tip.xml", 4);
-	//calibration[0].SetOutputFile("./parameters/parameters_undithered_tip_alldirections.txt");
-	//calibration[0].Calibrate();
-	//calibration[0].Validate("./validations/undithered_alldirections.txt");
-
-	//calibration[1].SetTrainingData("dithered_training_tip.xml");
-	//calibration[1].SetOutputFile("./parameters/parameters_dithered_tip.txt");
-	//calibration[1].Calibrate();
-	//calibration[1].Validate("./validations/dithered.txt");
-
-	//calibration[2].SetTrainingData("undithered_training_alldirections_baised1_tip.xml");
-	//calibration[2].SetOutputFile("./parameters/parameters_undithered_tip_biased1.txt");
-	//calibration[2].Calibrate();
-	//calibration[2].Validate("./validations/undithered_biased1.txt");
-
-	//calibration[3].SetTrainingData("undithered_training_alldirections_baised4_tip.xml");
-	//calibration[3].SetOutputFile("./parameters/parameters_undithered_tip_biased4.txt");
-	//calibration[3].Calibrate();
-	//calibration[3].Validate("./validations/undithered_biased4.txt");
-
-	//calibration[4].SetTrainingData("undithered_training_alldirections_rand1_tip.xml");
-	//calibration[4].SetOutputFile("./parameters/parameters_undithered_tip_rand1.txt");
-	//calibration[4].Calibrate();
-	//calibration[4].Validate("./validations/undithered_rand1.txt");
-
-	//calibration[5].SetTrainingData("undithered_training_alldirections_rand2_tip.xml");
-	//calibration[5].SetOutputFile("./parameters/parameters_undithered_tip_rand2.txt");
-	//calibration[5].Calibrate();
-	//calibration[5].Validate("./validations/undithered_rand2.txt");
-	//////////////////////////////////////////////////////////
-
-	//////////////////////////////////////////////////////////
-	//mkdir("./validations");
-
-	//CTRCalibration calibration;
-	//calibration.SetValidationData("undithered_training_alldirections_tip.xml");
-	////double params_double[9] = {0.00356128,   1.6502e-005,       0.99804,    0.00458869,  -0.000101279,      0.247405,     0.0172121, -9.26764e-007,      0.288861};
-
-	////calibration.SetValidationData("dithered_training_tip.xml");
-	//double params_double[9] = {0.00353888, 1.00696e-005,     0.994299,   0.00463028, -0.000108848,     0.255984,    0.0172424, 6.54974e-005,     0.283697};
-	//  
-	//::std::vector<double> params(params_double, params_double+9);
-	//calibration.SetInitParameters(params);
-	//calibration.Validate("./validations/temp.txt");
-	//////////////////////////////////////////////////////////
-
-	//////////////////////////////////////////////////////////
-	mkdir("./parameters");
 
 	CTRCalibration calibration;
-	calibration.SetNumGridPoints(200);
-	calibration.SetMaxIter(10000);
-	calibration.SetTrainingData("dithered_training62_tip.xml");
-	calibration.SetOutputFile("./parameters/parameters_dithered62_tip.txt");
-	calibration.Calibrate();
-	//////////////////////////////////////////////////////////
+	//calibration.SetNumGridPoints(200); 
+	//calibration.SetMaxIter(10000);
+	//calibration.SetTrainingData("training_04-20.xml");
+	//calibration.SetOutputFile("./parameters/parameters_dithered_shape.txt");
 
-	::_sleep(100000000);
+	//double params_double[9] = {0.00403581, 3.57912e-005, 1.06794, 0.00455293, -0.000233918, 0.222816, 0.0181759, 0.000425487, 0.0488478};
+	//::std::vector<double> params(params_double, params_double+9);
+	//calibration.SetInitParameters(params);
 
+	calibration.SetValidationData("validation_undith_04-20.xml");
+	//calibration.Calibrate();
+	////////////////////////////////////////////////////////////
+
+	//calibration.SetValidationData("cleaned_validation_undithered_102.xml");
+	//double params_double[9] = {0.0038754, 2.59578e-005, 0.963021, 0.00487092, -0.000197738, 0.216254, 0.0178223, 0.000482918, -0.291953};  
+	////double params_double[9] = {0.00396186, 1.75879e-005, 1.02237, 0.0046903, -0.000182862, 0.222432, 0.0177868, 0.000479621, 0.214996};  
+
+	//////double params_double[9] = {0.00397168, 2.34177e-005, 1.06242, 0.00453176, -0.000180719, 0.225445, 0.0177067, 0.000474693, -0.0523858};
+	double params_double[9] = {0.00403581, 3.57912e-005, 1.06794, 0.00455293, -0.000233918, 0.222816, 0.0181759, 0.000425487,  0.0488478};
+	::std::vector<double> params(params_double, params_double+9);
+	////double params_double[9] = {0.0038754, 2.59578e-005, 0.963021, 0.00487092, -0.000197738, 0.216254, 0.0178223, 0.000482918, -0.291953};  
+	calibration.SetInitParameters(params);	  
+	calibration.Validate("params.txt");
+	//
+	//::_sleep(100000000);
+
+	//MakeHisteresisGraphs(); 
 	return 0;
+}
+
+void MakeHisteresisGraphs()
+{
+	CTR* robot = CTRFactory::buildBalancedPair("");
+
+	::std::vector<double*> params = robot->GetFreeParameters();
+	int num_of_params = params.size();
+	double precurvatures[3] = {0.008, 0.00919, 0.01};
+	
+	MechanicsBasedKinematics* kinematics = new MechanicsBasedKinematics(robot);
+	kinematics->ActivateIVPJacobian();
+
+	::std::vector<double> angles = linspace(0.0, 2.0*M_PI, 1501);
+	::std::vector<double> tip_twist;
+
+	double rotation[2] = {0,0};
+	double translation[2] = {0,0};
+	double tmp;
+
+	::std::string filename;
+	for (int j = 0; j < 3; ++j)
+	{
+		*params[0] = precurvatures[j];
+		*params[3] = precurvatures[j];
+
+		filename =  "s_curves" + num2str(j) + ".txt";
+		::std::ofstream os(filename);
+		for(int i = 0; i < angles.size(); ++i)
+		{
+			rotation[1] = angles[i];
+			kinematics->ComputeKinematics(rotation, translation);
+
+			tmp = kinematics->GetInnerTubeRotation() - kinematics->GetTubeRotation(0, 150);
+
+			tip_twist.push_back(tmp);
+			os << angles[i] << "\t" << tmp << ::std::endl;
+		}
+		os.close();
+	}
 }
 
 void GenerateRandomConfigurations(int num, ::std::vector<double*>& confs)
@@ -400,7 +367,7 @@ void validateModel()
 	// load training data
 	ShapeDataset dataset;
 	//BuildShapeDatasetFromString("dithered_training_tip.xml", dataset);
-	BuildShapeDatasetFromString("undithered_training_tip.xml", dataset);
+	BuildShapeDatasetFromString("training_random.xml", dataset);
 	::std::cout << "Number of loaded measurements:" << dataset.size() << ::std::endl;	
 
 	// build the robot
@@ -409,7 +376,7 @@ void validateModel()
 	int numParameters = parameters.size();
 	
 	//double converged_parameters[9] = {0.00357448, 4.63325e-005,       1.0164,   0.00455987, -0.000323665,     0.264154,    0.0175309, -0.000257567,     0.299775};	// dithered + tip
-	double converged_parameters[9] = {0.0037543,   0.000114552,      0.996123,    0.00408825,  -0.000126495,      0.281973,     0.0181689, -2.92844e-006,      0.299999};	// undithered + tip
+	double converged_parameters[9] = {0.00403581, 3.57912e-005, 1.06794, 0.00455293, -0.000233918, 0.222816, 0.0181759, 0.000425487, 0.0488478};	// undithered + tip vu:0.0488478
 	for(int i = 0; i < numParameters; ++i)
 		*parameters[i] = converged_parameters[i];
 
@@ -581,7 +548,7 @@ double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinemati
 			continue;
 		else
 		{
-			error += tmp;
+			error += tmp*tmp;
 			counter++;
 		}
 
@@ -595,7 +562,7 @@ double ComputeErrorOnDatasetShape(CTR* robot, MechanicsBasedKinematics* kinemati
 		}
 	}
 
-	return error/counter;
+	return ::std::sqrt(error/counter);
 }
 
 
@@ -622,7 +589,7 @@ double ComputeSingleShapeError(CTR* robot, MechanicsBasedKinematics* kinematics,
 		return -1.0;
 	kinematics->GetRobotShape(robot_length_parameter, positionsAlongRobotModel);
 
-	double sum = 0;
+	//double sum = 0;
 	//for(int i = 0; i < positionsAlongRobotModel.size(); ++i)
 	//{
 	//	error = positionsAlongRobotExp[i] - positionsAlongRobotModel[i];

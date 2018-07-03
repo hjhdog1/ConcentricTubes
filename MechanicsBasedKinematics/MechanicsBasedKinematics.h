@@ -39,6 +39,8 @@ public:
 	double GetInnerTubeRotation();
 	bool GetControlJacobian(double s, Eigen::MatrixXd& controlJacobian);
 
+	double GetTubeRotation(int tube_id, double s);
+
 	void printSolution(string filename = "../solution.txt") const;
 	void printBishopFrame(string filename = "../frame.txt") const;
 	void ActivateIVPJacobian() {this->isUsingIVPJacobian = true;};

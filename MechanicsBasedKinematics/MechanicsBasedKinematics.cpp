@@ -24,7 +24,7 @@ bool MechanicsBasedKinematics::ComputeKinematics(double* rotation, double* trans
 	if(!this->robot->UpdateConfiguration(rotation, translation))
 	{
 		::std::cout << "translation: ";
-		PrintCArray(translation, 3);
+		PrintCArray(translation, this->robot->GetNumOfTubes());
 		return false;
 	}
 	
@@ -197,19 +197,31 @@ void MechanicsBasedKinematics::GetBishopFrame(const std::vector<double>& s, std:
 	for(int i = 0; i < sizeS; ++i)
 		this->GetBishopFrame(s[i], bishopFrame[i]);
 }
-
-double MechanicsBasedKinematics::GetInnerTubeRotation(double s)
+double MechanicsBasedKinematics::GetTubeRotation(int tube_id, double s)
 {
-	int numTube = robot->GetNumOfTubes();
-	
+
 	int beginIdx;
 	double frac;
 	this->findNearestGridPoint(s, &beginIdx, &frac);
+	
+	double rotation0 = this->BVPSolutionGrid(tube_id, beginIdx);
+	
+	if (beginIdx < this->BVPSolutionGrid.cols() - 1)
+	{
+		double rotation1 = this->BVPSolutionGrid(tube_id, beginIdx+1);
+		return frac*rotation1 + (1-frac)*rotation0;
+	}
+	else
+		return rotation0;
 
-	double rotation0 = this->BVPSolutionGrid(numTube-1, beginIdx);
-	double rotation1 = this->BVPSolutionGrid(numTube-1, beginIdx+1);
+}
 
-	return frac*rotation1 + (1-frac)*rotation0;
+// this can be refactored given the function above
+double MechanicsBasedKinematics::GetInnerTubeRotation(double s)
+{
+	int numTube = robot->GetNumOfTubes();
+
+	return this->GetTubeRotation(numTube - 1, s);
 }
 
 double MechanicsBasedKinematics::GetInnerTubeRotation()
@@ -582,7 +594,7 @@ bool MechanicsBasedKinematics::hasBVPConverged(Eigen::MatrixXd& solution, Eigen:
 	Eigen::VectorXd desiredBC = Eigen::Map<Eigen::VectorXd>(robotRotation, numTubes);
 	errorBC = desiredBC - estimatedBC;
 	double integralPart = 0;
-	for(int i = 0; i < 3; ++i)
+	for(int i = 0; i < numTubes; ++i)
 		errorBC[i] = 2 * M_PI * ::std::modf((errorBC[i] + M_PI)/(2*M_PI), &integralPart) - M_PI;
 
 	//for (int i = 0; i < 3; ++i)
@@ -632,7 +644,9 @@ void MechanicsBasedKinematics::findNearestGridPoint(double s, int* beginIdx, dou
 			*fracFromBegin = (s - arcLengthGrid[i-1]) / (arcLengthGrid[i] - arcLengthGrid[i-1]);
 			return;
 		}
+	*beginIdx = this->arcLengthGrid.size() - 1;
 
+	return;
 }
 
 void MechanicsBasedKinematics::GetBishopFrame(double s, SE3& bishopFrame, std::vector<SE3>& frames)

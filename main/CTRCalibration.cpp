@@ -60,6 +60,10 @@ void CTRCalibration::Calibrate()
 	double init_Step = 0.0001;
 	double step = init_Step;
 
+	double error_val = 0;
+	double error_val_max = 0;
+	int id;
+
 	// start timer
 	Tic();
 	::std::cout << "Calibration started" << ::std::endl;
@@ -71,6 +75,7 @@ void CTRCalibration::Calibrate()
 		max_error = 0.0;
 		error = UpdateParams(step, max_error);
 
+		error_val = this->ComputeErrorOnValidationSet(error_val_max, id);
 		// update stepsize
 		if (error > error_prev)
 			step = ::std::max(0.95*step, 0.5*init_Step);
@@ -80,15 +85,15 @@ void CTRCalibration::Calibrate()
 
 		// print intermadiate results
 		if (iter % 10 == 0)
-			PrintOnConsole(error, max_error, iter, step);
+			PrintOnConsole(error, max_error, iter, step, error_val);
 
 		if (iter % 50 == 0)
-			PrintInFile(error, max_error);
+			PrintInFile(error, max_error, error_val);
 	}
 	m_stream.close();
 
 	// print result
-	::std::cout << "Calibrated model parameters:" << m_params.transpose() << ::std::endl; 
+	::std::cout << "Calibrated model parameters:" << m_params.transpose() << ::std::endl;  
 
 	// builed calibrated ctr
 	m_calibratedCTR = CTRFactory::buildCTR("");
@@ -131,14 +136,16 @@ void CTRCalibration::Initialize()
 
 	// set init params
 	CTR* tempRobot = CTRFactory::buildCTR("");
-	m_params.resize(9);
+	int num_of_free_params = tempRobot->GetFreeParameters().size();
+	m_params.resize(num_of_free_params);
 	for(int i = 0 ; i < m_params.size(); i++)
 		m_params(i) = *(tempRobot->GetFreeParameters()[i]);
 	delete tempRobot;
 
 	// set scale factors
-	m_scaleFactor.resize(9);
-	double temp_scale_factor[9] = {100, 100, 1, 100, 100, 1, 100, 100, 5};
+	m_scaleFactor.resize(num_of_free_params);
+	double temp_scale_factor[9] = {100, 100, 1, 100, 100, 1, 100, 100, 1};
+	//double temp_scale_factor[8] = {100, 100, 1, 100, 100, 1, 100, 100};
 	for(int i = 0 ; i < m_scaleFactor.size(); i++)
 		m_scaleFactor(i) = temp_scale_factor[i];
 	
@@ -218,9 +225,18 @@ double CTRCalibration::ComputeSingleShapeError(CTR* robot, MechanicsBasedKinemat
 
 	double sum = 0;
 
-	error = positionsAlongRobotExp[positionsAlongRobotExp.size() - 1] - positionsAlongRobotModel[positionsAlongRobotModel.size() - 1];
-	max_error_current = error.norm();
-	return max_error_current;
+	for(int i = 0; i < positionsAlongRobotModel.size(); ++i)
+	{
+		error = positionsAlongRobotExp[i] - positionsAlongRobotModel[i];
+		if (error.norm() > max_error_current)
+			max_error_current = error.norm();
+		sum += error.norm() * error.norm();
+	}
+
+	return sum/positionsAlongRobotModel.size();
+	//error = positionsAlongRobotExp[positionsAlongRobotExp.size() - 1] - positionsAlongRobotModel[positionsAlongRobotModel.size() - 1];
+	//max_error_current = error.norm();
+	//return max_error_current;
 }
 
 double CTRCalibration::ComputeErrorOnTrainingSet(double& max_error)
@@ -264,7 +280,7 @@ double CTRCalibration::ComputeErrorOnTrainingSet(double& max_error)
 		}
 	}
 
-	return error/counter;
+	return ::std::sqrt(error/counter);
 }
 
 double CTRCalibration::ComputeErrorOnValidationSet(double& max_error, int& max_ID)
@@ -289,7 +305,7 @@ double CTRCalibration::ComputeErrorOnValidationSet(double& max_error, int& max_I
 			error += tmp;
 			counter++;
 
-			::std::cout << i << "-th conf: " << tmp << ::std::endl;
+			//::std::cout << i << "-th conf: " << tmp << ::std::endl;
 			
 			::Eigen::Vector3d position;
 			kinematics.GetTipPosition(position);
@@ -310,7 +326,7 @@ double CTRCalibration::ComputeErrorOnValidationSet(double& max_error, int& max_I
 
 	delete robot;
 
-	return error/counter;
+	return ::std::sqrt(error/counter);
 }
 
 void CTRCalibration::ComputeErrorJacobian(::Eigen::MatrixXd& error_jacobian)
@@ -364,17 +380,17 @@ double CTRCalibration::UpdateParams(double stepSize, double& max_error)
 	return error;
 }
 
-void CTRCalibration::PrintOnConsole(double error, double max_error, int iter, double step)
+void CTRCalibration::PrintOnConsole(double error, double max_error, int iter, double step, double error_val)
 {
 	double time_taken = Toc();
 	double time_left = (m_maxIter - iter) * time_taken/60.0/(double)iter;
-	::std::cout << "iter:" << iter << "  " << "mean_error:" <<  error << "   step:" << step <<  "   Estimated Time left:" << time_left << ::std::endl; 
+	::std::cout << "iter:" << iter << "  " << "mean_error (train):" <<  error << ", mean_error (val):" <<  error_val << "   step:" << step <<  "   Estimated Time left:" << time_left << ::std::endl; 
 }
 
-void CTRCalibration::PrintInFile(double error, double max_error)
+void CTRCalibration::PrintInFile(double error, double max_error, double error_val)
 {
 	::std::cout << "intermediate parameter values:" << m_params.transpose() << ::std::endl;
-	m_stream << m_params.transpose() << "   " << error << "	" << max_error << ::std::endl;
+	m_stream << m_params.transpose() << "   " << error << "	" << error_val << " " << max_error << ::std::endl;
 }
 
 void CTRCalibration::Tic()

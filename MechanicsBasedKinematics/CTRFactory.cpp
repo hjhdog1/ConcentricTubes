@@ -4,6 +4,58 @@ CTRFactory::CTRFactory()
 {
 }
 
+CTR* const CTRFactory::buildBalancedPair(::std::string robotXML)
+{
+	double* poissonRatio = new double;
+	*poissonRatio = -0.3;
+
+	double precurv[3] = {0.0, 1.0/265.0, 0.0};
+	Section sec1oftube1(150.0, precurv);
+	double k1 = 1.0;
+	Tube tube1(k1, poissonRatio);
+	tube1.SetCollarLength(0);
+	tube1.AddSection(sec1oftube1);
+
+	// Tube 2
+	precurv[1] = 0.0;
+	Section straightSection(17.0,precurv);
+	precurv[1] = 1.0/265.0;
+	double k2 = 1.0;
+	Section sec2oftube2(150.0,precurv);
+	Tube tube2(k2, poissonRatio);
+	//tube2.AddSection(straightSection);
+	tube2.AddSection(sec2oftube2);
+	tube2.SetCollarLength(0);
+	CTR* const robot = new CTR();
+	robot->AddTube(tube1);
+	robot->AddTube(tube2);
+	robot->Initialize();
+
+	// free parameters - Poisson's ratios of all tubes should be synced.
+	double scale = 1.0e-7;
+	for(int i = 0 ; i < 2; ++i)
+	{
+		if(i != 0)
+		{
+			robot->freeParameters.push_back(&robot->tubes[i].kxy);
+			robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2) );
+		}
+		robot->freeParameters.push_back(&robot->tubes[i].sections.back().precurvature[1]);
+		robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2) );
+
+		robot->freeParameters.push_back(&robot->tubes[i].sections.back().precurvature[0]);
+		robot->variances.push_back(*(--robot->variances.end()));
+
+		//robot->variances.push_back(1.0e-13);
+	}
+	// add poisson ratio
+	robot->freeParameters.push_back(poissonRatio);
+	robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2)) ;
+	/////////////////////////////////////
+	return robot;
+}
+
+
 CTR* const CTRFactory::buildCTR (std::string robotXML)
 {
 	double nu = 0.3;	// Poisson's ratio
@@ -94,7 +146,7 @@ CTR* const CTRFactory::buildCTR (std::string robotXML)
 	}
 	// add poisson ratio
 	robot->freeParameters.push_back(poissonRatio);
-	robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2) );
+	robot->variances.push_back(scale * ::std::pow(*robot->freeParameters.back(),2)) ;
 	/////////////////////////////////////
 
 	return robot;
